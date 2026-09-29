@@ -508,12 +508,12 @@ function syncControls() {
     const v = settings[key];
     if (el.type === 'checkbox') el.checked = !!v;
     else if (el.type === 'radio') el.checked = el.value === v;
-    else el.value = v;
+    else if (el.value !== String(v)) el.value = v;
   }
   document.querySelectorAll('output[data-for]').forEach((o) => {
     o.textContent = formatValue(o.dataset.for, settings[o.dataset.for]);
   });
-  $('#customRow').hidden = settings.charset !== 'custom';
+  $('#customChip').classList.toggle('is-active', settings.charset === 'custom');
   document.querySelectorAll('[data-effect]').forEach((el) => {
     el.checked = !!settings.effects[el.dataset.effect];
     el.closest('.gesture').classList.toggle('is-off', !el.checked);
@@ -521,7 +521,19 @@ function syncControls() {
   $('#sensitivity').disabled = !anyGesture();
 }
 
+// typing in the custom chip selects it; clearing it goes back to the last preset
+let lastPreset = settings.charset === 'custom' ? 'classic' : settings.charset;
+function useCustom(on) {
+  if (on && settings.charset !== 'custom') {
+    lastPreset = settings.charset;
+    settings.charset = 'custom';
+  } else if (!on && settings.charset === 'custom') {
+    settings.charset = lastPreset;
+  }
+}
+
 function apply(key) {
+  if (key === 'custom') useCustom(!!settings.custom.trim());
   if (key === 'density') field.resize(state.W, state.H, settings.density);
   if (key === 'charset' || key === 'custom' || key === 'theme') buildStyle();
   if (key === 'removeBg' && settings.removeBg && state.mode === 'camera') startVision();
@@ -559,6 +571,47 @@ document.querySelectorAll('[data-try]').forEach((btn) => {
     if (window.matchMedia('(max-width: 900px)').matches) stageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 });
+
+$('#customChip input').addEventListener('focus', () => {
+  if (!settings.custom.trim()) return;
+  useCustom(true);
+  buildStyle();
+  syncControls();
+  saveSettings();
+});
+
+// ───────────────────────────────────────── tabs
+
+const tabs = [...document.querySelectorAll('[role="tab"]')];
+
+function selectTab(name, focus) {
+  for (const t of tabs) {
+    const on = t.dataset.tab === name;
+    t.setAttribute('aria-selected', String(on));
+    t.tabIndex = on ? 0 : -1;
+    $('#' + t.getAttribute('aria-controls')).hidden = !on;
+    if (on && focus) t.focus();
+  }
+  try {
+    localStorage.setItem('ascii-camera:tab', name);
+  } catch {}
+}
+
+tabs.forEach((t, i) => {
+  t.addEventListener('click', () => selectTab(t.dataset.tab));
+  t.addEventListener('keydown', (e) => {
+    const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (!d) return;
+    e.preventDefault();
+    selectTab(tabs[(i + d + tabs.length) % tabs.length].dataset.tab, true);
+  });
+});
+
+let savedTab = 'style';
+try {
+  savedTab = localStorage.getItem('ascii-camera:tab') || 'style';
+} catch {}
+selectTab(tabs.some((t) => t.dataset.tab === savedTab) ? savedTab : 'style');
 
 $('#resetBtn').addEventListener('click', () => {
   Object.assign(settings, DEFAULTS, { effects: { ...ALL_ON } });
