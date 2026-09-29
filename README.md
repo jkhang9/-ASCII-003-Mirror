@@ -15,13 +15,15 @@ Desktop Chrome, Edge or Arc works best. Safari and Firefox work too, but trackin
 
 ## Customizer
 
-The panel has three tabs:
+The panel is one column, ordered like a design tool's inspector: the controls you reach for most come first, set-and-forget options last.
 
-| Tab | Controls |
+| Section | Controls |
 |---|---|
-| Style | character set (classic, detailed, blocks, symbols, minimal, binary, or type your own symbols or words into the last chip), density, edges (none, Sobel, DoG), light or dark canvas |
-| Image | brightness, contrast, blur, invert, mirror, remove background |
+| Characters | character set (classic, detailed, blocks, symbols, minimal, binary, or type your own symbols or words into the last chip), density |
+| Adjust | brightness, contrast, blur, invert |
+| Edges | none, Sobel (draws `\| / - \` along edges), DoG (line-art outlines) |
 | Gestures | each effect on/off with a **Try** button, sensitivity |
+| View | light or dark canvas, mirror, remove background |
 
 **Reset** restores the defaults, **Copy text** copies the current frame as plain text, and **Save PNG** downloads it. Settings are remembered in the browser.
 

@@ -62,87 +62,97 @@
       </div>
     </section>
 
-    <aside class="panel" aria-label="Controls">
-      <div class="tabs" role="tablist" aria-label="Control groups">
-        <button class="tab" type="button" role="tab" id="tab-style" aria-controls="panel-style" data-tab="style">Style</button>
-        <button class="tab" type="button" role="tab" id="tab-image" aria-controls="panel-image" data-tab="image">Image</button>
-        <button class="tab" type="button" role="tab" id="tab-gestures" aria-controls="panel-gestures" data-tab="gestures">Gestures</button>
+    <aside class="panel" aria-label="Customize">
+      <div class="panel__head">
+        <h2 class="panel__title">Customize</h2>
+        <button class="text-btn" id="resetBtn" type="button">Reset</button>
       </div>
 
-      <div class="tabpanel" role="tabpanel" id="panel-style" aria-labelledby="tab-style">
-        <div class="field">
-          <span class="field__label" id="charsetLabel">Characters</span>
-          <div class="segmented segmented--wrap" role="radiogroup" aria-labelledby="charsetLabel">
-            <label title=".:-=+*#%@"><input type="radio" name="charset" value="classic" data-setting="charset"><span>Classic</span></label>
-            <label title=".:;Il!i><~+?1tfjrx"><input type="radio" name="charset" value="detailed" data-setting="charset"><span>Detailed</span></label>
-            <label title="░▒▓█"><input type="radio" name="charset" value="blocks" data-setting="charset"><span>Blocks</span></label>
-            <label title=".,:+*o"><input type="radio" name="charset" value="symbols" data-setting="charset"><span>Symbols</span></label>
-            <label title=".:-"><input type="radio" name="charset" value="minimal" data-setting="charset"><span>Minimal</span></label>
-            <label title="10"><input type="radio" name="charset" value="binary" data-setting="charset"><span>Binary</span></label>
-            <label class="chip-input" id="customChip">
-              <input class="chip-input__field" type="text" data-setting="custom" maxlength="48" placeholder="Type your own…" aria-label="Custom characters or words" autocomplete="off" spellcheck="false">
-            </label>
-          </div>
+      <section class="section" aria-labelledby="charsetLabel">
+        <h3 class="section__title" id="charsetLabel">Characters</h3>
+        <div class="segmented segmented--wrap" role="radiogroup" aria-labelledby="charsetLabel">
+          <label title=".:-=+*#%@"><input type="radio" name="charset" value="classic" data-setting="charset"><span>Classic</span></label>
+          <label title=".:;Il!i><~+?1tfjrx"><input type="radio" name="charset" value="detailed" data-setting="charset"><span>Detailed</span></label>
+          <label title="░▒▓█"><input type="radio" name="charset" value="blocks" data-setting="charset"><span>Blocks</span></label>
+          <label title=".,:+*o"><input type="radio" name="charset" value="symbols" data-setting="charset"><span>Symbols</span></label>
+          <label title=".:-"><input type="radio" name="charset" value="minimal" data-setting="charset"><span>Minimal</span></label>
+          <label title="10"><input type="radio" name="charset" value="binary" data-setting="charset"><span>Binary</span></label>
+          <label class="chip-input" id="customChip">
+            <input class="chip-input__field" type="text" data-setting="custom" maxlength="48" placeholder="Type your own…" aria-label="Custom characters or words" autocomplete="off" spellcheck="false">
+          </label>
         </div>
-        <div class="slider">
-          <label for="density">Density</label><output data-for="density"></output>
-          <input class="range" type="range" id="density" data-setting="density" min="0" max="1" step="0.01">
-        </div>
-        <div class="row">
-          <span id="edgesLabel">Edges</span>
-          <div class="segmented segmented--inline" role="radiogroup" aria-labelledby="edgesLabel">
+      <div class="prop prop--slider">
+        <label for="density">Density</label>
+        <input class="range" type="range" id="density" data-setting="density" min="0" max="1" step="0.01">
+        <output data-for="density"></output>
+      </div>
+      </section>
+
+      <section class="section" aria-labelledby="adjustLabel">
+        <h3 class="section__title" id="adjustLabel">Adjust</h3>
+      <div class="prop prop--slider">
+        <label for="brightness">Brightness</label>
+        <input class="range" type="range" id="brightness" data-setting="brightness" min="-100" max="100" step="1">
+        <output data-for="brightness"></output>
+      </div>
+      <div class="prop prop--slider">
+        <label for="contrast">Contrast</label>
+        <input class="range" type="range" id="contrast" data-setting="contrast" min="0.2" max="3" step="0.1">
+        <output data-for="contrast"></output>
+      </div>
+      <div class="prop prop--slider">
+        <label for="blur">Blur</label>
+        <input class="range" type="range" id="blur" data-setting="blur" min="0" max="4" step="1">
+        <output data-for="blur"></output>
+      </div>
+        <label class="check"><input type="checkbox" data-setting="invert"><span class="check__box" aria-hidden="true"></span>Invert</label>
+      </section>
+
+      <section class="section" aria-labelledby="edgesLabel">
+        <div class="prop">
+          <h3 class="section__title" id="edgesLabel">Edges</h3>
+          <div class="segmented" role="radiogroup" aria-labelledby="edgesLabel">
             <label><input type="radio" name="edges" value="none" data-setting="edges"><span>None</span></label>
             <label title="Draws | / - \ along edges"><input type="radio" name="edges" value="sobel" data-setting="edges"><span>Sobel</span></label>
             <label title="Difference of Gaussians: line-art outlines"><input type="radio" name="edges" value="dog" data-setting="edges"><span>DoG</span></label>
           </div>
         </div>
-        <div class="row">
+      </section>
+
+      <section class="section" aria-labelledby="gesturesLabel">
+        <div class="section__head">
+          <h3 class="section__title" id="gesturesLabel">Gestures</h3>
+          <span class="muted small">Keys 1–6 to preview</span>
+        </div>
+        <ul class="gestures">
+          <li class="gesture" data-gesture="wave"><label class="check"><input type="checkbox" data-effect="wave"><span class="check__box" aria-hidden="true"></span><span>Wave <span class="muted">sparkles</span></span></label><button class="try" type="button" data-try="wave">Try</button></li>
+          <li class="gesture" data-gesture="fireworks"><label class="check"><input type="checkbox" data-effect="fireworks"><span class="check__box" aria-hidden="true"></span><span>Fist → open <span class="muted">fireworks</span></span></label><button class="try" type="button" data-try="fireworks">Try</button></li>
+          <li class="gesture" data-gesture="thumbsUp"><label class="check"><input type="checkbox" data-effect="thumbsUp"><span class="check__box" aria-hidden="true"></span><span>Thumbs up <span class="muted">spark</span></span></label><button class="try" type="button" data-try="thumbsUp">Try</button></li>
+          <li class="gesture" data-gesture="doubleThumbs"><label class="check"><input type="checkbox" data-effect="doubleThumbs"><span class="check__box" aria-hidden="true"></span><span>Two thumbs <span class="muted">celebration</span></span></label><button class="try" type="button" data-try="doubleThumbs">Try</button></li>
+          <li class="gesture" data-gesture="peace"><label class="check"><input type="checkbox" data-effect="peace"><span class="check__box" aria-hidden="true"></span><span>Peace <span class="muted">star burst</span></span></label><button class="try" type="button" data-try="peace">Try</button></li>
+          <li class="gesture" data-gesture="heart"><label class="check"><input type="checkbox" data-effect="heart"><span class="check__box" aria-hidden="true"></span><span>Heart hands <span class="muted">hearts</span></span></label><button class="try" type="button" data-try="heart">Try</button></li>
+        </ul>
+      <div class="prop prop--slider">
+        <label for="sensitivity">Sensitivity</label>
+        <input class="range" type="range" id="sensitivity" data-setting="sensitivity" min="0" max="1" step="0.01">
+        <output data-for="sensitivity"></output>
+      </div>
+      </section>
+
+      <section class="section" aria-labelledby="viewLabel">
+        <h3 class="section__title" id="viewLabel">View</h3>
+        <div class="prop">
           <span id="themeLabel">Canvas</span>
-          <div class="segmented segmented--inline" role="radiogroup" aria-labelledby="themeLabel">
+          <div class="segmented" role="radiogroup" aria-labelledby="themeLabel">
             <label><input type="radio" name="theme" value="light" data-setting="theme"><span>Light</span></label>
             <label><input type="radio" name="theme" value="dark" data-setting="theme"><span>Dark</span></label>
           </div>
         </div>
-      </div>
-
-      <div class="tabpanel" role="tabpanel" id="panel-image" aria-labelledby="tab-image" hidden>
-        <div class="slider">
-          <label for="brightness">Brightness</label><output data-for="brightness"></output>
-          <input class="range" type="range" id="brightness" data-setting="brightness" min="-100" max="100" step="1">
-        </div>
-        <div class="slider">
-          <label for="contrast">Contrast</label><output data-for="contrast"></output>
-          <input class="range" type="range" id="contrast" data-setting="contrast" min="0.2" max="3" step="0.1">
-        </div>
-        <div class="slider">
-          <label for="blur">Blur</label><output data-for="blur"></output>
-          <input class="range" type="range" id="blur" data-setting="blur" min="0" max="4" step="1">
-        </div>
-        <div class="checks">
-          <label class="check"><input type="checkbox" data-setting="invert"><span class="check__box" aria-hidden="true"></span>Invert</label>
-          <label class="check"><input type="checkbox" data-setting="mirror"><span class="check__box" aria-hidden="true"></span>Mirror</label>
-          <label class="check"><input type="checkbox" data-setting="removeBg"><span class="check__box" aria-hidden="true"></span>Remove background</label>
-        </div>
-      </div>
-
-      <div class="tabpanel" role="tabpanel" id="panel-gestures" aria-labelledby="tab-gestures" hidden>
-        <ul class="gestures">
-            <li class="gesture" data-gesture="wave"><label class="check"><input type="checkbox" data-effect="wave"><span class="check__box" aria-hidden="true"></span><span>Wave <span class="muted">sparkles</span></span></label><button class="try" type="button" data-try="wave">Try</button></li>
-            <li class="gesture" data-gesture="fireworks"><label class="check"><input type="checkbox" data-effect="fireworks"><span class="check__box" aria-hidden="true"></span><span>Fist → open <span class="muted">fireworks</span></span></label><button class="try" type="button" data-try="fireworks">Try</button></li>
-            <li class="gesture" data-gesture="thumbsUp"><label class="check"><input type="checkbox" data-effect="thumbsUp"><span class="check__box" aria-hidden="true"></span><span>Thumbs up <span class="muted">spark</span></span></label><button class="try" type="button" data-try="thumbsUp">Try</button></li>
-            <li class="gesture" data-gesture="doubleThumbs"><label class="check"><input type="checkbox" data-effect="doubleThumbs"><span class="check__box" aria-hidden="true"></span><span>Two thumbs <span class="muted">celebration</span></span></label><button class="try" type="button" data-try="doubleThumbs">Try</button></li>
-            <li class="gesture" data-gesture="peace"><label class="check"><input type="checkbox" data-effect="peace"><span class="check__box" aria-hidden="true"></span><span>Peace <span class="muted">star burst</span></span></label><button class="try" type="button" data-try="peace">Try</button></li>
-            <li class="gesture" data-gesture="heart"><label class="check"><input type="checkbox" data-effect="heart"><span class="check__box" aria-hidden="true"></span><span>Heart hands <span class="muted">hearts</span></span></label><button class="try" type="button" data-try="heart">Try</button></li>
-        </ul>
-        <div class="slider">
-          <label for="sensitivity">Sensitivity</label><output data-for="sensitivity"></output>
-          <input class="range" type="range" id="sensitivity" data-setting="sensitivity" min="0" max="1" step="0.01">
-        </div>
-        <p class="muted small note">Keys 1–6 also preview the effects.</p>
-      </div>
+        <label class="check"><input type="checkbox" data-setting="mirror"><span class="check__box" aria-hidden="true"></span>Mirror</label>
+        <label class="check"><input type="checkbox" data-setting="removeBg"><span class="check__box" aria-hidden="true"></span>Remove background</label>
+      </section>
 
       <div class="actions">
-        <button class="btn" id="resetBtn" type="button">Reset</button>
         <button class="btn" id="copyBtn" type="button">Copy text</button>
         <button class="btn btn--ink" id="snapBtn" type="button">Save PNG</button>
       </div>

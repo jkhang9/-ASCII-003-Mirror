@@ -580,39 +580,6 @@ $('#customChip input').addEventListener('focus', () => {
   saveSettings();
 });
 
-// ───────────────────────────────────────── tabs
-
-const tabs = [...document.querySelectorAll('[role="tab"]')];
-
-function selectTab(name, focus) {
-  for (const t of tabs) {
-    const on = t.dataset.tab === name;
-    t.setAttribute('aria-selected', String(on));
-    t.tabIndex = on ? 0 : -1;
-    $('#' + t.getAttribute('aria-controls')).hidden = !on;
-    if (on && focus) t.focus();
-  }
-  try {
-    localStorage.setItem('ascii-camera:tab', name);
-  } catch {}
-}
-
-tabs.forEach((t, i) => {
-  t.addEventListener('click', () => selectTab(t.dataset.tab));
-  t.addEventListener('keydown', (e) => {
-    const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
-    if (!d) return;
-    e.preventDefault();
-    selectTab(tabs[(i + d + tabs.length) % tabs.length].dataset.tab, true);
-  });
-});
-
-let savedTab = 'style';
-try {
-  savedTab = localStorage.getItem('ascii-camera:tab') || 'style';
-} catch {}
-selectTab(tabs.some((t) => t.dataset.tab === savedTab) ? savedTab : 'style');
-
 $('#resetBtn').addEventListener('click', () => {
   Object.assign(settings, DEFAULTS, { effects: { ...ALL_ON } });
   field.resize(state.W, state.H, settings.density);
