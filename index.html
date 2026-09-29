@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ASCII Camera</title>
-  <meta name="description" content="A live ASCII mirror with a customizer: brightness, contrast, dithering, character sets and edge detection.">
+  <meta name="description" content="A live ASCII mirror with a customizer: brightness, contrast, character sets, edge detection and gesture effects.">
   <meta name="theme-color" content="#f2f2f2">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23111111'/%3E%3Ctext x='32' y='44' font-size='36' text-anchor='middle' font-family='monospace' fill='%23f2f2f2'%3E%23%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -82,18 +82,15 @@
 
       <section class="group">
         <h2 class="group__title">Characters</h2>
-        <label class="row">
-          <span>Character set</span>
-          <select class="select" id="charset" data-setting="charset">
-            <option value="classic">Classic</option>
-            <option value="detailed">Detailed</option>
-            <option value="blocks">Blocks</option>
-            <option value="symbols">Symbols</option>
-            <option value="minimal">Minimal</option>
-            <option value="binary">Binary</option>
-            <option value="custom">Custom…</option>
-          </select>
-        </label>
+        <div class="segmented segmented--wrap" role="radiogroup" aria-label="Character set">
+          <label><input type="radio" name="charset" value="classic" data-setting="charset"><span>Classic</span></label>
+          <label><input type="radio" name="charset" value="detailed" data-setting="charset"><span>Detailed</span></label>
+          <label><input type="radio" name="charset" value="blocks" data-setting="charset"><span>Blocks</span></label>
+          <label><input type="radio" name="charset" value="symbols" data-setting="charset"><span>Symbols</span></label>
+          <label><input type="radio" name="charset" value="minimal" data-setting="charset"><span>Minimal</span></label>
+          <label><input type="radio" name="charset" value="binary" data-setting="charset"><span>Binary</span></label>
+          <label><input type="radio" name="charset" value="custom" data-setting="charset"><span>Custom</span></label>
+        </div>
         <label class="row row--stack" id="customRow">
           <span class="muted small">A few symbols, or words to write with</span>
           <input class="input" type="text" data-setting="custom" maxlength="48" placeholder="hello, you" autocomplete="off" spellcheck="false">
@@ -102,19 +99,6 @@
           <label for="density">Density</label><output data-for="density"></output>
           <input class="range" type="range" id="density" data-setting="density" min="0" max="1" step="0.01">
         </div>
-      </section>
-
-      <section class="group">
-        <h2 class="group__title">Dithering</h2>
-        <label class="check"><input type="checkbox" data-setting="dither"><span class="check__box" aria-hidden="true"></span>Dither</label>
-        <label class="row">
-          <span>Algorithm</span>
-          <select class="select" id="ditherAlgo" data-setting="ditherAlgo">
-            <option value="floyd">Floyd–Steinberg</option>
-            <option value="atkinson">Atkinson</option>
-            <option value="bayer">Ordered (Bayer)</option>
-          </select>
-        </label>
       </section>
 
       <section class="group">
@@ -128,12 +112,18 @@
 
       <section class="group">
         <h2 class="group__title">Gestures</h2>
-        <label class="check"><input type="checkbox" data-setting="gestures"><span class="check__box" aria-hidden="true"></span>Gesture effects</label>
+        <ul class="gestures">
+          <li class="gesture" data-gesture="wave"><label class="check"><input type="checkbox" data-effect="wave"><span class="check__box" aria-hidden="true"></span><span>Wave <span class="muted">sparkles</span></span></label><button class="try" type="button" data-try="wave">Try</button></li>
+          <li class="gesture" data-gesture="fireworks"><label class="check"><input type="checkbox" data-effect="fireworks"><span class="check__box" aria-hidden="true"></span><span>Fist → open <span class="muted">fireworks</span></span></label><button class="try" type="button" data-try="fireworks">Try</button></li>
+          <li class="gesture" data-gesture="thumbsUp"><label class="check"><input type="checkbox" data-effect="thumbsUp"><span class="check__box" aria-hidden="true"></span><span>Thumbs up <span class="muted">spark</span></span></label><button class="try" type="button" data-try="thumbsUp">Try</button></li>
+          <li class="gesture" data-gesture="doubleThumbs"><label class="check"><input type="checkbox" data-effect="doubleThumbs"><span class="check__box" aria-hidden="true"></span><span>Two thumbs <span class="muted">celebration</span></span></label><button class="try" type="button" data-try="doubleThumbs">Try</button></li>
+          <li class="gesture" data-gesture="peace"><label class="check"><input type="checkbox" data-effect="peace"><span class="check__box" aria-hidden="true"></span><span>Peace <span class="muted">star burst</span></span></label><button class="try" type="button" data-try="peace">Try</button></li>
+          <li class="gesture" data-gesture="heart"><label class="check"><input type="checkbox" data-effect="heart"><span class="check__box" aria-hidden="true"></span><span>Heart hands <span class="muted">hearts</span></span></label><button class="try" type="button" data-try="heart">Try</button></li>
+        </ul>
         <div class="slider">
           <label for="sensitivity">Sensitivity</label><output data-for="sensitivity"></output>
           <input class="range" type="range" id="sensitivity" data-setting="sensitivity" min="0" max="1" step="0.01">
         </div>
-        <p class="muted small note">Keys 1–6 preview the effects.</p>
       </section>
 
       <section class="group">

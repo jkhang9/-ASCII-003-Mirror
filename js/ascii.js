@@ -1,7 +1,7 @@
 // The ASCII portrait. The camera frame is shrunk to one pixel per character
 // cell and run through the customizer's adjustments (levels, brightness,
 // contrast, blur, invert, edges, background removal) to give each cell an
-// "ink" value. Drawing maps ink onto the character ramp, optionally dithered.
+// "ink" value. Drawing maps ink onto the character ramp.
 // Every cell also carries a tiny spring so characters lag a little behind
 // motion, get pushed by effects, and settle back into place. Gesture effects
 // write into a per-cell layer (fxA/fxG/fxK) that the draw pass honours, so
@@ -15,9 +15,6 @@ const smooth = (a, b, v) => {
   const t = clamp01((v - a) / (b - a));
   return t * t * (3 - 2 * t);
 };
-
-// 4×4 Bayer thresholds, centred in 0..1
-const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 
 // fxG marker: the effect inverts this cell's tone instead of setting a glyph
 export const INVERT = { invert: true };
@@ -73,7 +70,6 @@ export class AsciiField {
     this.motion = new Float32Array(n);
     this.edge = new Float32Array(n);
     this.edgeDir = new Uint8Array(n);
-    this.err = new Float32Array(n);
     this.shown = new Array(n).fill(null);
     // effect layer, written by Effects.rasterize: strength, glyph, knockout
     this.fxA = new Float32Array(n);
@@ -349,59 +345,11 @@ export class AsciiField {
     }
   }
 
-  // Map ink onto n ramp levels: straight quantisation, error diffusion or ordered.
-  levels(n, dither) {
-    const { cols, rows, ink, err } = this;
-    const top = n - 1;
-    if (dither === 'floyd' || dither === 'atkinson') {
-      // err holds the running error, and each cell is overwritten with its level once visited
-      err.set(ink);
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const i = r * cols + c;
-          const v = err[i];
-          const lvl = Math.max(0, Math.min(top, Math.round(v * top)));
-          const e = v - lvl / top;
-          err[i] = lvl;
-          const R = c < cols - 1, L = c > 0, D = r < rows - 1;
-          if (dither === 'floyd') {
-            if (R) err[i + 1] += e * 0.4375;
-            if (D) {
-              if (L) err[i + cols - 1] += e * 0.1875;
-              err[i + cols] += e * 0.3125;
-              if (R) err[i + cols + 1] += e * 0.0625;
-            }
-          } else {
-            const f = e / 8;
-            if (R) err[i + 1] += f;
-            if (c < cols - 2) err[i + 2] += f;
-            if (D) {
-              if (L) err[i + cols - 1] += f;
-              err[i + cols] += f;
-              if (R) err[i + cols + 1] += f;
-            }
-            if (r < rows - 2) err[i + 2 * cols] += f;
-          }
-        }
-      }
-    } else if (dither === 'bayer') {
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const i = r * cols + c;
-          err[i] = Math.max(0, Math.min(top, Math.floor(ink[i] * top + BAYER4[(r & 3) * 4 + (c & 3)])));
-        }
-      }
-    } else {
-      for (let i = 0; i < cols * rows; i++) err[i] = Math.min(top, Math.floor(ink[i] * n));
-    }
-    return err;
-  }
-
   draw(ctx, style, opts) {
     const { cols, rows, cellW, cellH, ink, dx, dy, edge, edgeDir, shown, fxA, fxG, fxK } = this;
     const textMode = style.mode === 'text';
     const ramp = style.glyphs;
-    const lv = this.levels(textMode ? 2 : ramp.length, opts.dither);
+    const n = textMode ? 0 : ramp.length;
     const sobel = opts.edges === 'sobel';
     const size = cellH * (style.scale || 0.98);
 
@@ -417,20 +365,19 @@ export class AsciiField {
           alpha = Math.min(1, 0.3 + fxA[i]);
           if (fxG[i] === INVERT) {
             if (textMode) g = ink[i] < 0.3 ? style.text[(seq - 1) % style.text.length] : null;
-            else g = ramp[ramp.length - 1 - lv[i]];
+            else g = ramp[n - 1 - Math.min(n - 1, Math.floor(ink[i] * n))];
           } else {
             g = fxG[i];
           }
         } else if (sobel && edge[i] > 0.28) {
           g = style.edgeGlyphs[edgeDir[i]];
         } else if (textMode) {
-          const on = opts.dither ? lv[i] > 0 : ink[i] > 0.08;
-          if (on) {
+          if (ink[i] > 0.08) {
             g = style.text[(seq - 1) % style.text.length];
-            if (!opts.dither) alpha = 0.2 + ink[i];
+            alpha = 0.2 + ink[i];
           }
         } else {
-          g = ramp[lv[i]];
+          g = ramp[Math.min(n - 1, Math.floor(ink[i] * n))];
         }
         // the portrait makes room around effects
         if (fxA[i] < 0.05 && fxK[i] > 0) alpha *= 1 - fxK[i];

@@ -28,7 +28,6 @@ const GESTURE_NAMES = {
   heart: 'Heart hands',
 };
 const ALL_ON = Object.fromEntries(GESTURES.map((g) => [g, true]));
-const ALL_OFF = Object.fromEntries(GESTURES.map((g) => [g, false]));
 
 // ramps run from no ink to most ink; a space means an empty cell
 const CHARSETS = {
@@ -51,10 +50,8 @@ const DEFAULTS = {
   charset: 'classic',
   custom: '',
   density: 0.55,
-  dither: false,
-  ditherAlgo: 'floyd',
   edges: 'none',
-  gestures: true,
+  effects: ALL_ON,
   sensitivity: 0.5,
   removeBg: false,
   mirror: true,
@@ -64,9 +61,9 @@ const DEFAULTS = {
 function loadSettings() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE) || 'null');
-    if (raw && typeof raw === 'object') return { ...DEFAULTS, ...raw };
+    if (raw && typeof raw === 'object') return { ...DEFAULTS, ...raw, effects: { ...ALL_ON, ...(raw.effects || {}) } };
   } catch {}
-  return { ...DEFAULTS };
+  return { ...DEFAULTS, effects: { ...ALL_ON } };
 }
 function saveSettings() {
   try {
@@ -138,6 +135,8 @@ function buildStyle() {
   if (settings.charset === 'blocks') style.scale = 1.01 / atlas.extent('█');
 }
 
+const anyGesture = () => GESTURES.some((g) => settings.effects[g]);
+
 // effect glyphs always use the canvas ink, so they stay black and white
 const glyphFor = (ch) => atlas.get(ch, theme().ink);
 
@@ -149,7 +148,6 @@ function renderOpts() {
     // on a dark canvas the characters are light, so ink follows brightness
     invert: settings.invert !== (settings.theme === 'dark'),
     edges: settings.edges,
-    dither: settings.dither ? settings.ditherAlgo : null,
   };
 }
 
@@ -209,7 +207,7 @@ async function startCamera() {
     return;
   }
   // warm the models up while the permission prompt is open
-  if (settings.removeBg || settings.gestures) startVision();
+  if (settings.removeBg || anyGesture()) startVision();
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
@@ -221,7 +219,7 @@ async function startCamera() {
     effects.clear();
     setOverlay('none');
     updateStatus();
-    if (settings.gestures) showHint(state.visionState === 'ready' ? 'Try a gesture: wave, fist → open, thumbs up, peace, heart hands' : 'Loading hand tracking…', 5000);
+    if (anyGesture()) showHint(state.visionState === 'ready' ? 'Try a gesture: wave, fist → open, thumbs up, peace, heart hands' : 'Loading hand tracking…', 5000);
   } catch (err) {
     console.warn('[ascii-camera] camera error', err);
     const name = err && err.name;
@@ -246,7 +244,7 @@ function startVision() {
       state.vision = v;
       state.visionState = 'ready';
       updateStatus();
-      if (state.mode === 'camera' && settings.gestures) showHint(v.hands ? 'Try a gesture: wave, fist → open, thumbs up, peace, heart hands' : 'Hand tracking didn’t load', 5000);
+      if (state.mode === 'camera' && anyGesture()) showHint(v.hands ? 'Try a gesture: wave, fist → open, thumbs up, peace, heart hands' : 'Hand tracking didn’t load', 5000);
     })
     .catch((err) => {
       console.warn('[ascii-camera] motion models failed to load', err);
@@ -349,12 +347,18 @@ function playEffect(ev) {
   feedback(ev.type);
 }
 
+// the effect plays inside the mirror; its row in the panel lights up briefly
 function feedback(type) {
   window.dispatchEvent(new CustomEvent('ascii-camera:gesture', { detail: { type } }));
-  showHint(GESTURE_NAMES[type], 1400);
+  const row = document.querySelector(`.gesture[data-gesture="${type}"]`);
+  if (row) {
+    row.classList.add('is-hit');
+    clearTimeout(row._t);
+    row._t = setTimeout(() => row.classList.remove('is-hit'), 1200);
+  }
 }
 
-// previews from the number keys, placed where a hand would be
+// previews from the Try buttons and number keys, placed where a hand would be
 function preview(type) {
   const now = performance.now();
   if (engine.cooling(type, now) && type !== 'fireworks') return;
@@ -400,11 +404,11 @@ function updateStatus() {
     s = 'active';
     text = 'Live';
   }
-  if (state.mode === 'camera' && (settings.removeBg || settings.gestures)) {
+  if (state.mode === 'camera' && (settings.removeBg || anyGesture())) {
     if (state.visionState === 'loading') aux = '· loading hand tracking';
     else if (state.visionState === 'failed') aux = '· tracking unavailable';
-    else if (settings.gestures && state.vision && !state.vision.hands) aux = '· gestures unavailable';
-    else if (settings.gestures && state.hands.length) aux = `· ${state.hands.length} hand${state.hands.length > 1 ? 's' : ''}`;
+    else if (anyGesture() && state.vision && !state.vision.hands) aux = '· gestures unavailable';
+    else if (anyGesture() && state.hands.length) aux = `· ${state.hands.length} hand${state.hands.length > 1 ? 's' : ''}`;
   }
   statusEl.dataset.state = s;
   statusText.textContent = text;
@@ -440,7 +444,7 @@ function frame(now) {
         const t0 = performance.now();
         if (settings.removeBg && state.frameNo % state.segEvery === 0) runSegmenter();
         const had = state.hands.length;
-        state.hands = settings.gestures ? runHands() : [];
+        state.hands = anyGesture() ? runHands() : [];
         if (had !== state.hands.length) updateStatus();
         // if the machine struggles, segment every other frame
         const cost = performance.now() - t0;
@@ -455,7 +459,7 @@ function frame(now) {
 
   // gestures
   if (state.mode === 'camera' && fresh && state.visionState === 'ready') {
-    const out = engine.update(state.hands, now, settings.sensitivity, settings.gestures ? ALL_ON : ALL_OFF);
+    const out = engine.update(state.hands, now, settings.sensitivity, settings.effects);
     state.waving = out.waving;
     state.moving = out.moving;
     for (const ev of out.events) playEffect(ev);
@@ -509,17 +513,19 @@ function syncControls() {
   document.querySelectorAll('output[data-for]').forEach((o) => {
     o.textContent = formatValue(o.dataset.for, settings[o.dataset.for]);
   });
-  $('#ditherAlgo').disabled = !settings.dither;
   $('#customRow').hidden = settings.charset !== 'custom';
-  $('#sensitivity').disabled = !settings.gestures;
+  document.querySelectorAll('[data-effect]').forEach((el) => {
+    el.checked = !!settings.effects[el.dataset.effect];
+    el.closest('.gesture').classList.toggle('is-off', !el.checked);
+  });
+  $('#sensitivity').disabled = !anyGesture();
 }
 
 function apply(key) {
   if (key === 'density') field.resize(state.W, state.H, settings.density);
   if (key === 'charset' || key === 'custom' || key === 'theme') buildStyle();
-  if ((key === 'removeBg' || key === 'gestures') && settings[key] && state.mode === 'camera') startVision();
-  if (key === 'gestures' && !settings.gestures) effects.clear();
-  if (key === 'removeBg' || key === 'gestures') updateStatus();
+  if (key === 'removeBg' && settings.removeBg && state.mode === 'camera') startVision();
+  if (key === 'removeBg') updateStatus();
 }
 
 for (const el of controls) {
@@ -537,8 +543,25 @@ for (const el of controls) {
   });
 }
 
+document.querySelectorAll('[data-effect]').forEach((el) => {
+  el.addEventListener('change', () => {
+    settings.effects = { ...settings.effects, [el.dataset.effect]: el.checked };
+    if (el.checked && state.mode === 'camera') startVision();
+    syncControls();
+    updateStatus();
+    saveSettings();
+  });
+});
+
+document.querySelectorAll('[data-try]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    preview(btn.dataset.try);
+    if (window.matchMedia('(max-width: 900px)').matches) stageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+});
+
 $('#resetBtn').addEventListener('click', () => {
-  Object.assign(settings, DEFAULTS);
+  Object.assign(settings, DEFAULTS, { effects: { ...ALL_ON } });
   field.resize(state.W, state.H, settings.density);
   buildStyle();
   syncControls();
@@ -574,7 +597,7 @@ function download(blob, ext) {
 window.addEventListener('keydown', (e) => {
   if (e.target.closest('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return;
   const n = parseInt(e.key, 10);
-  if (settings.gestures && n >= 1 && n <= 6) preview(GESTURES[n - 1]);
+  if (n >= 1 && n <= 6) preview(GESTURES[n - 1]);
 });
 
 $('#startBtn').addEventListener('click', startCamera);
@@ -585,7 +608,7 @@ overlay.addEventListener('click', (e) => {
     state.mode = 'demo';
     setOverlay('none');
     updateStatus();
-    showHint('Press 1–6 to preview the gesture effects', 5000);
+    showHint('Press Try, or keys 1–6, to preview the gestures', 5000);
   }
 });
 
