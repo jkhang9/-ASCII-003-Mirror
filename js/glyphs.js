@@ -43,7 +43,27 @@ export class GlyphAtlas {
     ctx.font = `${BASE}px ${FONTS[font] || FONTS.mono}`;
     ctx.fillText(ch, c.width / 2, c.height / 2 + BASE * 0.04);
     // draw size is expressed relative to BASE, so remember the sprite ratio
-    return { canvas: c, w: c.width / BASE, h: c.height / BASE };
+    return { ch, canvas: c, w: c.width / BASE, h: c.height / BASE };
+  }
+
+  // Vertical ink extent of a glyph, as a fraction of the font size. Used to
+  // scale block characters so they fill a whole cell.
+  extent(ch, font = 'mono') {
+    const g = this.render(ch, '#000', font);
+    const ctx = g.canvas.getContext('2d', { willReadFrequently: true });
+    const { width, height } = g.canvas;
+    const { data } = ctx.getImageData(0, 0, width, height);
+    let top = height, bottom = -1;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (data[(y * width + x) * 4 + 3] > 128) {
+          if (y < top) top = y;
+          bottom = y;
+          break;
+        }
+      }
+    }
+    return bottom < top ? 1 : (bottom - top + 1) / BASE;
   }
 
   // How much ink a glyph lays down, 0..1. Used to order a character set from

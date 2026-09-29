@@ -1,10 +1,10 @@
 import { GlyphAtlas } from './glyphs.js';
 import { AsciiField } from './ascii.js';
 import { Effects } from './effects.js';
-import { BG, INK } from './palette.js';
 import { classifyHand, GestureEngine, COOLDOWN } from './gestures.js';
 import { loadVision } from './vision.js';
 import { DemoSitter } from './demo.js';
+import { THEMES } from './palette.js';
 
 const $ = (s) => document.querySelector(s);
 
@@ -19,36 +19,58 @@ const statusAux = $('#statusAux');
 const hintEl = $('#hint');
 
 const GESTURES = ['wave', 'fireworks', 'thumbsUp', 'doubleThumbs', 'peace', 'heart'];
-const PRESETS = {
-  dot: ['.'],
-  plus: ['+'],
-  x: ['x'],
-  o: ['o'],
-  hash: ['#'],
-  at: ['@'],
-  mixed: ['.', '+', '*', 'o', ',', ':'],
+const GESTURE_NAMES = {
+  wave: 'Wave',
+  fireworks: 'Fist → open',
+  thumbsUp: 'Thumbs up',
+  doubleThumbs: 'Two thumbs up',
+  peace: 'Peace',
+  heart: 'Heart hands',
+};
+const ALL_ON = Object.fromEntries(GESTURES.map((g) => [g, true]));
+const ALL_OFF = Object.fromEntries(GESTURES.map((g) => [g, false]));
+
+// ramps run from no ink to most ink; a space means an empty cell
+const CHARSETS = {
+  classic: ' .:-=+*#%@',
+  detailed: " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
+  blocks: ' ░▒▓█',
+  symbols: ' .,:+*o',
+  minimal: ' .:-',
+  binary: ' 10',
 };
 
 // ───────────────────────────────────────── settings
 
+const STORE = 'ascii-camera:settings:v2';
 const DEFAULTS = {
-  charset: 'mixed',
+  brightness: 0, // -100..100
+  contrast: 1, // 0.2..3
+  blur: 0, // cells
+  invert: false,
+  charset: 'classic',
   custom: '',
   density: 0.55,
+  dither: false,
+  ditherAlgo: 'floyd',
+  edges: 'none',
+  gestures: true,
   sensitivity: 0.5,
-  effects: Object.fromEntries(GESTURES.map((g) => [g, true])),
+  removeBg: false,
+  mirror: true,
+  theme: 'light',
 };
 
 function loadSettings() {
   try {
-    const raw = JSON.parse(localStorage.getItem('ascii-camera:settings') || 'null');
-    if (raw && typeof raw === 'object') return { ...DEFAULTS, ...raw, effects: { ...DEFAULTS.effects, ...(raw.effects || {}) } };
+    const raw = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (raw && typeof raw === 'object') return { ...DEFAULTS, ...raw };
   } catch {}
-  return structuredClone(DEFAULTS);
+  return { ...DEFAULTS };
 }
 function saveSettings() {
   try {
-    localStorage.setItem('ascii-camera:settings', JSON.stringify(settings));
+    localStorage.setItem(STORE, JSON.stringify(settings));
   } catch {}
 }
 
@@ -58,14 +80,14 @@ const settings = loadSettings();
 
 const atlas = new GlyphAtlas();
 const field = new AsciiField();
-const effects = new Effects(atlas);
-const engine = new GestureEngine();
 const demo = new DemoSitter();
+const effects = new Effects();
+const engine = new GestureEngine();
 effects.field = field;
 effects.body = field.body;
 
 const segCanvas = document.createElement('canvas');
-const segCtx = segCanvas.getContext('2d', { willReadFrequently: false });
+const segCtx = segCanvas.getContext('2d');
 
 const state = {
   mode: 'idle', // idle | camera | demo
@@ -85,28 +107,50 @@ const state = {
   frameNo: 0,
   previewWaveUntil: 0,
   previewWaveSide: 1,
-  hintTimer: 0,
 };
 
 let style = null;
 
+function theme() {
+  return THEMES[settings.theme] || THEMES.light;
+}
+
 function buildStyle() {
-  const custom = (settings.custom || '').trim();
+  const ink = theme().ink;
+  const glyph = (ch) => (ch === ' ' ? null : atlas.get(ch, ink));
+  const edgeGlyphs = ['|', '/', '-', '\\'].map(glyph);
+  const custom = settings.custom.trim();
   if (settings.charset === 'custom' && custom) {
-    const isText = /[\p{L}\p{N}]/u.test(custom) && [...custom].length >= 2;
-    if (isText) {
+    // words are written out along the rows; a handful of symbols becomes a ramp
+    if (/[\p{L}\p{N}]/u.test(custom) && [...custom].length >= 2) {
       const chars = [...settings.custom.replace(/\s+/g, ' ').trim(), ' '];
-      style = { mode: 'text', text: chars, textGlyphs: chars.map((ch) => (ch === ' ' ? null : atlas.get(ch, INK))) };
+      style = { mode: 'text', text: chars.map(glyph), edgeGlyphs };
       return;
     }
     const uniq = [...new Set([...custom.replace(/\s/g, '')])];
     uniq.sort((a, b) => atlas.inkOf(a) - atlas.inkOf(b));
-    style = { mode: 'density', glyphs: uniq.map((ch) => atlas.get(ch, INK)) };
+    style = { mode: 'ramp', glyphs: [null, ...uniq.map(glyph)], edgeGlyphs };
     return;
   }
-  const chars = [...(PRESETS[settings.charset] || PRESETS.mixed)];
-  chars.sort((a, b) => atlas.inkOf(a) - atlas.inkOf(b));
-  style = { mode: 'density', glyphs: chars.map((ch) => atlas.get(ch, INK)) };
+  const ramp = CHARSETS[settings.charset] || CHARSETS.classic;
+  style = { mode: 'ramp', glyphs: [...ramp].map(glyph), edgeGlyphs };
+  // blocks are drawn tall enough to meet the rows above and below
+  if (settings.charset === 'blocks') style.scale = 1.01 / atlas.extent('█');
+}
+
+// effect glyphs always use the canvas ink, so they stay black and white
+const glyphFor = (ch) => atlas.get(ch, theme().ink);
+
+function renderOpts() {
+  return {
+    brightness: settings.brightness / 200,
+    contrast: settings.contrast,
+    blur: settings.blur,
+    // on a dark canvas the characters are light, so ink follows brightness
+    invert: settings.invert !== (settings.theme === 'dark'),
+    edges: settings.edges,
+    dither: settings.dither ? settings.ditherAlgo : null,
+  };
 }
 
 // ───────────────────────────────────────── layout
@@ -131,7 +175,7 @@ function resize() {
 
 new ResizeObserver(resize).observe(stageEl);
 
-// cover-crop a source into the stage, mirrored like a looking glass
+// cover-crop a source into the stage
 function cover(sw, sh) {
   const { W, H } = state;
   const s = Math.max(W / sw, H / sh);
@@ -141,7 +185,8 @@ function cover(sw, sh) {
 
 function drawCamera(c, w, h) {
   const cr = cover(video.videoWidth, video.videoHeight);
-  c.setTransform(-w / state.W, 0, 0, h / state.H, w, 0);
+  if (settings.mirror) c.setTransform(-w / state.W, 0, 0, h / state.H, w, 0);
+  else c.setTransform(w / state.W, 0, 0, h / state.H, 0, 0);
   c.drawImage(video, cr.ox, cr.oy, cr.w, cr.h);
   c.setTransform(1, 0, 0, 1, 0, 0);
 }
@@ -152,19 +197,19 @@ function drawDemo(c, w, h) {
   c.setTransform(1, 0, 0, 1, 0, 0);
 }
 
-// ───────────────────────────────────────── camera + model
+// ───────────────────────────────────────── camera + segmenter
 
 async function startCamera() {
   setOverlay('requesting');
   if (!navigator.mediaDevices?.getUserMedia) {
     $('#unavailableDetail').textContent = window.isSecureContext
       ? 'This browser has no camera access.'
-      : 'Cameras need a secure page — open this over https or localhost.';
+      : 'Cameras need a secure page. Open this over https or localhost.';
     setOverlay('unavailable');
     return;
   }
-  // warm the model up while the permission prompt is open
-  startVision();
+  // warm the models up while the permission prompt is open
+  if (settings.removeBg || settings.gestures) startVision();
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
@@ -176,7 +221,7 @@ async function startCamera() {
     effects.clear();
     setOverlay('none');
     updateStatus();
-    showHint(state.visionState === 'ready' ? 'Try a wave' : 'Loading hand tracking…', 0);
+    if (settings.gestures) showHint(state.visionState === 'ready' ? 'Try a gesture: wave, fist → open, thumbs up, peace, heart hands' : 'Loading hand tracking…', 5000);
   } catch (err) {
     console.warn('[ascii-camera] camera error', err);
     const name = err && err.name;
@@ -185,7 +230,7 @@ async function startCamera() {
     } else {
       $('#unavailableDetail').textContent =
         name === 'NotReadableError' || name === 'TrackStartError'
-          ? 'It seems busy — close other apps using the camera.'
+          ? 'It seems busy. Close other apps using the camera.'
           : 'Plug one in, or close other apps using it.';
       setOverlay('unavailable');
     }
@@ -199,15 +244,14 @@ function startVision() {
   loadVision()
     .then((v) => {
       state.vision = v;
-      state.visionState = v.hands ? 'ready' : 'failed';
+      state.visionState = 'ready';
       updateStatus();
-      if (state.mode === 'camera') showHint(v.hands ? 'Try a wave' : 'Gestures are offline. Portrait only.', 4200);
+      if (state.mode === 'camera' && settings.gestures) showHint(v.hands ? 'Try a gesture: wave, fist → open, thumbs up, peace, heart hands' : 'Hand tracking didn’t load', 5000);
     })
     .catch((err) => {
-      console.warn('[ascii-camera] motion model failed to load', err);
+      console.warn('[ascii-camera] motion models failed to load', err);
       state.visionState = 'failed';
       updateStatus();
-      if (state.mode === 'camera') showHint('Hand tracking didn’t load. Portrait only.', 5000);
     });
 }
 
@@ -237,7 +281,9 @@ function runSegmenter() {
   } catch (err) {
     console.warn('[ascii-camera] segmenter stopped', err);
     state.vision.segmenter = null;
+    state.visionState = 'failed';
     state.mask = null;
+    updateStatus();
   }
 }
 
@@ -250,7 +296,6 @@ function runHands() {
   } catch (err) {
     console.warn('[ascii-camera] hand tracking stopped', err);
     state.vision.hands = null;
-    state.visionState = 'failed';
     updateStatus();
     return [];
   }
@@ -261,7 +306,10 @@ function runHands() {
   (res.landmarks || []).forEach((lm, k) => {
     const world = res.worldLandmarks?.[k];
     if (!world || lm.length < 21) return;
-    const pts = lm.map((p) => ({ x: W - (cr.ox + p.x * cr.w), y: cr.oy + p.y * cr.h }));
+    const pts = lm.map((p) => {
+      const x = cr.ox + p.x * cr.w;
+      return { x: settings.mirror ? W - x : x, y: cr.oy + p.y * cr.h };
+    });
     const cls = classifyHand(world, pts);
     const palm = {
       x: (pts[0].x + pts[5].x + pts[9].x + pts[17].x) / 4,
@@ -276,7 +324,7 @@ function runHands() {
   return out;
 }
 
-// ───────────────────────────────────────── effects + feedback
+// ───────────────────────────────────────── effects
 
 function playEffect(ev) {
   switch (ev.type) {
@@ -301,19 +349,12 @@ function playEffect(ev) {
   feedback(ev.type);
 }
 
-// the effect itself plays inside the mirror; the panel row just lights up
 function feedback(type) {
   window.dispatchEvent(new CustomEvent('ascii-camera:gesture', { detail: { type } }));
-  const row = document.querySelector(`.gesture[data-gesture="${type}"]`);
-  if (row) {
-    row.classList.add('is-hit');
-    clearTimeout(row._t);
-    row._t = setTimeout(() => row.classList.remove('is-hit'), 1200);
-  }
-  if (hintEl.textContent && state.visionState === 'ready') hideHint();
+  showHint(GESTURE_NAMES[type], 1400);
 }
 
-// previews from the Try buttons and number keys, placed where a hand would be
+// previews from the number keys, placed where a hand would be
 function preview(type) {
   const now = performance.now();
   if (engine.cooling(type, now) && type !== 'fireworks') return;
@@ -350,39 +391,31 @@ function setOverlay(name) {
   overlay.dataset.state = name;
 }
 
-function updateStatus(aux) {
-  let s, text;
+function updateStatus() {
+  let s = 'idle', text = 'Standing by', aux = '';
   if (state.mode === 'demo') {
     s = 'demo';
     text = 'Demo';
-    aux = aux ?? '· press 1–6';
-  } else if (state.mode !== 'camera') {
-    s = 'idle';
-    text = 'Standing by';
-  } else if (state.visionState === 'ready') {
+  } else if (state.mode === 'camera') {
     s = 'active';
-    text = 'Tracking';
-  } else if (state.visionState === 'loading') {
-    s = 'loading';
-    text = 'Loading hand tracking';
-  } else {
-    s = 'offline';
-    text = 'Gestures offline';
-    aux = aux ?? '· portrait only';
+    text = 'Live';
+  }
+  if (state.mode === 'camera' && (settings.removeBg || settings.gestures)) {
+    if (state.visionState === 'loading') aux = '· loading hand tracking';
+    else if (state.visionState === 'failed') aux = '· tracking unavailable';
+    else if (settings.gestures && state.vision && !state.vision.hands) aux = '· gestures unavailable';
+    else if (settings.gestures && state.hands.length) aux = `· ${state.hands.length} hand${state.hands.length > 1 ? 's' : ''}`;
   }
   statusEl.dataset.state = s;
-  if (statusText.textContent !== text) statusText.textContent = text;
-  const a = aux || '';
-  if (statusAux.textContent !== a) statusAux.textContent = a;
+  statusText.textContent = text;
+  statusAux.textContent = aux;
 }
 
-function showHint(text, ms) {
+let hintTimer = 0;
+function showHint(text, ms = 2500) {
   hintEl.textContent = text;
-  clearTimeout(state.hintTimer);
-  if (ms) state.hintTimer = setTimeout(hideHint, ms);
-}
-function hideHint() {
-  hintEl.textContent = '';
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => (hintEl.textContent = ''), ms);
 }
 
 // ───────────────────────────────────────── main loop
@@ -396,8 +429,8 @@ function frame(now) {
   if (!state.W) return;
 
   const t = now / 1000;
+  const opts = renderOpts();
   let fresh = false;
-
   if (state.mode === 'camera' && video.readyState >= 2 && video.videoWidth) {
     if (video.currentTime !== state.lastVideoTime) {
       state.lastVideoTime = video.currentTime;
@@ -405,36 +438,34 @@ function frame(now) {
       state.frameNo++;
       if (state.visionState === 'ready') {
         const t0 = performance.now();
-        if (state.frameNo % state.segEvery === 0) runSegmenter();
-        state.hands = runHands();
+        if (settings.removeBg && state.frameNo % state.segEvery === 0) runSegmenter();
+        const had = state.hands.length;
+        state.hands = settings.gestures ? runHands() : [];
+        if (had !== state.hands.length) updateStatus();
         // if the machine struggles, segment every other frame
         const cost = performance.now() - t0;
         state.segEvery = cost > 26 ? 2 : cost < 14 ? 1 : state.segEvery;
       }
-      field.ingest(drawCamera, state.mask);
+      field.ingest(drawCamera, settings.removeBg ? state.mask : null, opts);
     }
   } else {
     demo.step(t);
-    field.ingest(drawDemo, demo.maskFor(state.W / state.H));
-    fresh = true;
+    field.ingest(drawDemo, settings.removeBg ? demo.maskFor(state.W / state.H) : null, opts);
   }
 
   // gestures
   if (state.mode === 'camera' && fresh && state.visionState === 'ready') {
-    const out = engine.update(state.hands, now, settings.sensitivity, settings.effects);
+    const out = engine.update(state.hands, now, settings.sensitivity, settings.gestures ? ALL_ON : ALL_OFF);
     state.waving = out.waving;
     state.moving = out.moving;
     for (const ev of out.events) playEffect(ev);
-    updateStatus(engine.anyCooling(now) ? '· cooling down' : state.hands.length ? `· ${state.hands.length} hand${state.hands.length > 1 ? 's' : ''}` : '');
   } else if (state.mode === 'camera' && state.visionState !== 'ready') {
     state.waving = [];
     state.moving = [];
   }
 
-  // hands stir the portrait; waving hands shed stars
-  for (const h of state.moving) {
-    field.stir(h.x, h.y, h.size * 1.3, h.vx, h.vy, dt * 1.6);
-  }
+  // hands stir the portrait; waving hands shed sparkles
+  for (const h of state.moving) field.stir(h.x, h.y, h.size * 1.3, h.vx, h.vy, dt * 1.6);
   for (const h of state.waving) effects.waveTrail(h, dt);
   if (now < state.previewWaveUntil) {
     const b = field.body;
@@ -447,103 +478,103 @@ function frame(now) {
 
   field.update(dt);
   effects.update(dt);
+  effects.rasterize(field, glyphFor);
 
-  // paint: effects are written into the grid, then the grid is drawn once
-  effects.rasterize(field);
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
   ctx.globalAlpha = 1;
-  ctx.fillStyle = BG;
+  ctx.fillStyle = theme().bg;
   ctx.fillRect(0, 0, state.W, state.H);
-  field.draw(ctx, style, t);
+  field.draw(ctx, style, opts);
 }
 
 // ───────────────────────────────────────── controls
 
+const controls = [...document.querySelectorAll('[data-setting]')];
+
+function formatValue(key, v) {
+  if (key === 'brightness') return (v > 0 ? '+' : '') + v;
+  if (key === 'contrast') return (+v).toFixed(1);
+  if (key === 'density' || key === 'sensitivity') return Math.round(v * 100) + '%';
+  return String(v);
+}
+
 function syncControls() {
-  document.querySelectorAll('.chip').forEach((chip) => {
-    chip.setAttribute('aria-checked', String(settings.charset === chip.dataset.set));
-    chip.tabIndex = settings.charset === chip.dataset.set || (settings.charset === 'custom' && chip.dataset.set === 'mixed') ? 0 : -1;
+  for (const el of controls) {
+    const key = el.dataset.setting;
+    const v = settings[key];
+    if (el.type === 'checkbox') el.checked = !!v;
+    else if (el.type === 'radio') el.checked = el.value === v;
+    else el.value = v;
+  }
+  document.querySelectorAll('output[data-for]').forEach((o) => {
+    o.textContent = formatValue(o.dataset.for, settings[o.dataset.for]);
   });
-  $('#customText').value = settings.custom;
-  $('.custom').classList.toggle('is-active', settings.charset === 'custom');
-  $('#density').value = settings.density;
-  $('#sensitivity').value = settings.sensitivity;
-  document.querySelectorAll('[data-effect]').forEach((el) => {
-    el.checked = !!settings.effects[el.dataset.effect];
-  });
-  document.querySelectorAll('.gesture').forEach((row) => {
-    row.classList.toggle('is-off', !settings.effects[row.dataset.gesture]);
+  $('#ditherAlgo').disabled = !settings.dither;
+  $('#customRow').hidden = settings.charset !== 'custom';
+  $('#sensitivity').disabled = !settings.gestures;
+}
+
+function apply(key) {
+  if (key === 'density') field.resize(state.W, state.H, settings.density);
+  if (key === 'charset' || key === 'custom' || key === 'theme') buildStyle();
+  if ((key === 'removeBg' || key === 'gestures') && settings[key] && state.mode === 'camera') startVision();
+  if (key === 'gestures' && !settings.gestures) effects.clear();
+  if (key === 'removeBg' || key === 'gestures') updateStatus();
+}
+
+for (const el of controls) {
+  const key = el.dataset.setting;
+  el.addEventListener(el.type === 'range' || el.type === 'text' ? 'input' : 'change', () => {
+    if (el.type === 'checkbox') settings[key] = el.checked;
+    else if (el.type === 'range') settings[key] = +el.value;
+    else if (el.type === 'radio') {
+      if (!el.checked) return;
+      settings[key] = el.value;
+    } else settings[key] = el.value;
+    apply(key);
+    syncControls();
+    saveSettings();
   });
 }
 
-const chipEls = [...document.querySelectorAll('.chip')];
-chipEls.forEach((chip, i) => {
-  chip.addEventListener('click', () => {
-    settings.charset = chip.dataset.set;
-    buildStyle();
-    syncControls();
-    saveSettings();
-  });
-  chip.addEventListener('keydown', (e) => {
-    const d = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
-    if (!d) return;
-    e.preventDefault();
-    const next = chipEls[(i + d + chipEls.length) % chipEls.length];
-    next.focus();
-    next.click();
-  });
-});
-
-let lastPreset = settings.charset === 'custom' ? 'mixed' : settings.charset;
-$('#customText').addEventListener('input', (e) => {
-  settings.custom = e.target.value;
-  if (settings.custom.trim()) {
-    if (settings.charset !== 'custom') lastPreset = settings.charset;
-    settings.charset = 'custom';
-  } else if (settings.charset === 'custom') {
-    settings.charset = lastPreset;
-  }
+$('#resetBtn').addEventListener('click', () => {
+  Object.assign(settings, DEFAULTS);
+  field.resize(state.W, state.H, settings.density);
   buildStyle();
   syncControls();
+  updateStatus();
   saveSettings();
 });
-$('#customText').addEventListener('focus', () => {
-  if (settings.custom.trim() && settings.charset !== 'custom') {
-    lastPreset = settings.charset;
-    settings.charset = 'custom';
-    buildStyle();
-    syncControls();
+
+$('#copyBtn').addEventListener('click', async () => {
+  const text = field.toText();
+  try {
+    await navigator.clipboard.writeText(text);
+    showHint(`Copied ${field.cols} × ${field.rows} characters`);
+  } catch {
+    download(new Blob([text], { type: 'text/plain' }), 'txt');
+    showHint('Clipboard unavailable, saved as a text file');
   }
 });
 
-$('#density').addEventListener('input', (e) => {
-  settings.density = +e.target.value;
-  field.resize(state.W, state.H, settings.density);
-  saveSettings();
-});
-$('#sensitivity').addEventListener('input', (e) => {
-  settings.sensitivity = +e.target.value;
-  saveSettings();
-});
-document.querySelectorAll('[data-effect]').forEach((el) => {
-  el.addEventListener('change', () => {
-    settings.effects[el.dataset.effect] = el.checked;
-    syncControls();
-    saveSettings();
-  });
+$('#snapBtn').addEventListener('click', () => {
+  canvas.toBlob((blob) => blob && download(blob, 'png'), 'image/png');
 });
 
-document.querySelectorAll('[data-try]').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    preview(btn.dataset.try);
-    if (window.matchMedia('(max-width: 900px)').matches) stageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  });
-});
+function download(blob, ext) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `ascii-camera-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
 
 window.addEventListener('keydown', (e) => {
-  if (e.target.closest('input, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.closest('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return;
   const n = parseInt(e.key, 10);
-  if (n >= 1 && n <= 6) preview(GESTURES[n - 1]);
+  if (settings.gestures && n >= 1 && n <= 6) preview(GESTURES[n - 1]);
 });
 
 $('#startBtn').addEventListener('click', startCamera);
@@ -554,21 +585,8 @@ overlay.addEventListener('click', (e) => {
     state.mode = 'demo';
     setOverlay('none');
     updateStatus();
-    showHint('Press Try or keys 1–6 to preview gestures', 5000);
+    showHint('Press 1–6 to preview the gesture effects', 5000);
   }
-});
-
-$('#snapBtn').addEventListener('click', () => {
-  canvas.toBlob((blob) => {
-    if (!blob) return;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `ascii-camera-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  }, 'image/png');
 });
 
 // ───────────────────────────────────────── boot
@@ -583,12 +601,9 @@ async function boot() {
   updateStatus();
   requestAnimationFrame(frame);
 
-  // re-rasterise glyphs once the web fonts arrive
+  // re-rasterise glyphs once the web font arrives
   try {
-    await Promise.race([
-      Promise.all([document.fonts.load('64px "IBM Plex Mono"'), document.fonts.load('16px "IBM Plex Sans"')]),
-      new Promise((r) => setTimeout(r, 2500)),
-    ]);
+    await Promise.race([document.fonts.load('64px "IBM Plex Mono"'), new Promise((r) => setTimeout(r, 2500))]);
   } catch {}
   atlas.clear();
   buildStyle();

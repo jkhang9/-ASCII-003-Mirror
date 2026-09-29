@@ -1,6 +1,11 @@
 // The ASCII portrait. The camera frame is shrunk to one pixel per character
-// cell, turned into "ink", and every cell carries a tiny spring so characters
-// can be pushed around by motion and settle back into place.
+// cell and run through the customizer's adjustments (levels, brightness,
+// contrast, blur, invert, edges, background removal) to give each cell an
+// "ink" value. Drawing maps ink onto the character ramp, optionally dithered.
+// Every cell also carries a tiny spring so characters lag a little behind
+// motion, get pushed by effects, and settle back into place. Gesture effects
+// write into a per-cell layer (fxA/fxG/fxK) that the draw pass honours, so
+// they are part of the grid rather than painted on top.
 
 import { stamp } from './glyphs.js';
 
@@ -10,6 +15,12 @@ const smooth = (a, b, v) => {
   const t = clamp01((v - a) / (b - a));
   return t * t * (3 - 2 * t);
 };
+
+// 4×4 Bayer thresholds, centred in 0..1
+const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
+
+// fxG marker: the effect inverts this cell's tone instead of setting a glyph
+export const INVERT = { invert: true };
 
 // cheap deterministic hash → 0..1
 function hash(n) {
@@ -33,9 +44,8 @@ export class AsciiField {
     this.sctx = this.sample.getContext('2d', { willReadFrequently: true });
     this.lo = 0.15;
     this.hi = 0.85;
-    this.hasMask = false;
-    this.body = { present: false, cx: 0, cy: 0, rx: 0, ry: 0, top: 0, edges: [], cells: [] };
     this.hist = new Uint32Array(64);
+    this.body = { present: false, cx: 0, cy: 0, rx: 0, ry: 0, top: 0, edges: [], cells: [] };
   }
 
   resize(width, height, density) {
@@ -52,41 +62,68 @@ export class AsciiField {
     this.rows = rows;
     const n = cols * rows;
     this.lum = new Float32Array(n);
-    this.blur = new Float32Array(n);
+    this.val = new Float32Array(n);
     this.tmp = new Float32Array(n);
+    this.g1 = new Float32Array(n);
+    this.g2 = new Float32Array(n);
     this.mask = new Float32Array(n);
     this.target = new Float32Array(n);
     this.prev = new Float32Array(n);
     this.ink = new Float32Array(n);
     this.motion = new Float32Array(n);
+    this.edge = new Float32Array(n);
+    this.edgeDir = new Uint8Array(n);
+    this.err = new Float32Array(n);
+    this.shown = new Array(n).fill(null);
+    // effect layer, written by Effects.rasterize: strength, glyph, knockout
+    this.fxA = new Float32Array(n);
+    this.fxG = new Array(n).fill(null);
+    this.fxK = new Float32Array(n);
     this.dx = new Float32Array(n);
     this.dy = new Float32Array(n);
     this.vx = new Float32Array(n);
     this.vy = new Float32Array(n);
-    // effect layer, written by Effects.rasterize: strength and glyph per cell
-    this.fxA = new Float32Array(n);
-    this.fxG = new Array(n).fill(null);
     this.sample.width = cols;
     this.sample.height = rows;
   }
 
-  // draw(ctx, w, h) must paint the (mirrored, cropped) frame into w×h.
+  // separable box blur of `src` into `dst` (may be the same array)
+  blur(src, dst, radius) {
+    const { cols, rows, tmp } = this;
+    const k = 2 * radius + 1;
+    for (let r = 0; r < rows; r++) {
+      const o = r * cols;
+      for (let c = 0; c < cols; c++) {
+        let s = 0;
+        for (let d = -radius; d <= radius; d++) s += src[o + Math.min(cols - 1, Math.max(0, c + d))];
+        tmp[o + c] = s / k;
+      }
+    }
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rows; r++) {
+        let s = 0;
+        for (let d = -radius; d <= radius; d++) s += tmp[Math.min(rows - 1, Math.max(0, r + d)) * cols + c];
+        dst[r * cols + c] = s / k;
+      }
+    }
+  }
+
+  // draw(ctx, w, h) must paint the (cropped, possibly mirrored) frame into w×h.
   // mask is {data, width, height} aligned with the same crop, or null.
-  ingest(draw, mask) {
-    const { cols, rows, sctx } = this;
+  ingest(draw, mask, opts) {
+    const { cols, rows, sctx, lum, val, g1, g2, target, prev, motion, edge, edgeDir } = this;
     const n = cols * rows;
     sctx.imageSmoothingEnabled = true;
     sctx.imageSmoothingQuality = 'high';
     draw(sctx, cols, rows);
     const px = sctx.getImageData(0, 0, cols, rows).data;
-    const { lum, blur, tmp, target, prev, motion } = this;
 
     for (let i = 0, j = 0; i < n; i++, j += 4) {
       lum[i] = (0.299 * px[j] + 0.587 * px[j + 1] + 0.114 * px[j + 2]) / 255;
     }
 
     // segmentation mask → grid (bilinear)
-    this.hasMask = !!mask;
+    const m = this.mask;
     if (mask) {
       const { data, width: mw, height: mh } = mask;
       for (let r = 0; r < rows; r++) {
@@ -104,22 +141,22 @@ export class AsciiField {
           const v = (a + (b - a) * tx) * (1 - ty) + (cc + (d - cc) * tx) * ty;
           const i = r * cols + c;
           // a little temporal smoothing keeps the silhouette edge calm
-          this.mask[i] += (v - this.mask[i]) * 0.6;
+          m[i] += (v - m[i]) * 0.6;
         }
       }
     }
 
-    // auto levels from the subject (or whole frame without a mask)
+    // auto levels from the subject (or the whole frame without a mask)
     const hist = this.hist;
     hist.fill(0);
     let count = 0;
     for (let i = 0; i < n; i++) {
-      if (mask && this.mask[i] < 0.5) continue;
+      if (mask && m[i] < 0.5) continue;
       hist[Math.min(63, (lum[i] * 64) | 0)]++;
       count++;
     }
     if (count > 20) {
-      const loK = count * 0.04, hiK = count * 0.97;
+      const loK = count * 0.03, hiK = count * 0.97;
       let acc = 0, lo = 0, hi = 63;
       for (let b = 0; b < 64; b++) {
         acc += hist[b];
@@ -131,41 +168,53 @@ export class AsciiField {
       this.hi += (H - this.hi) * 0.08;
     }
 
-    // 3×3 box blur for a local-contrast "detail" term (eyes, brows, mouth)
-    for (let r = 0; r < rows; r++) {
-      const o = r * cols;
-      for (let c = 0; c < cols; c++) {
-        const l = c > 0 ? lum[o + c - 1] : lum[o + c];
-        const rr = c < cols - 1 ? lum[o + c + 1] : lum[o + c];
-        tmp[o + c] = (l + lum[o + c] + rr) / 3;
+    // levels → blur → brightness / contrast, as a 0..1 brightness value
+    const range = Math.max(0.12, this.hi - this.lo);
+    for (let i = 0; i < n; i++) val[i] = clamp01((lum[i] - this.lo) / range);
+    if (opts.blur > 0) this.blur(val, val, opts.blur);
+    const { contrast, brightness, invert } = opts;
+    for (let i = 0; i < n; i++) val[i] = clamp01((val[i] - 0.5) * contrast + 0.5 + brightness);
+
+    // edges, measured on the adjusted image
+    const edges = opts.edges;
+    edge.fill(0);
+    if (edges === 'sobel') {
+      for (let r = 1; r < rows - 1; r++) {
+        for (let c = 1; c < cols - 1; c++) {
+          const i = r * cols + c;
+          const tl = val[i - cols - 1], t = val[i - cols], tr = val[i - cols + 1];
+          const l = val[i - 1], rr = val[i + 1];
+          const bl = val[i + cols - 1], b = val[i + cols], br = val[i + cols + 1];
+          const gx = tr + 2 * rr + br - tl - 2 * l - bl;
+          const gy = bl + 2 * b + br - tl - 2 * t - tr;
+          edge[i] = clamp01(Math.hypot(gx, gy) / 4);
+          // the edge runs across the gradient: pick | / - \ for its direction
+          let a = Math.atan2(gy, gx);
+          if (a < 0) a += Math.PI;
+          edgeDir[i] = a < Math.PI / 8 || a >= (7 * Math.PI) / 8 ? 0 : a < (3 * Math.PI) / 8 ? 1 : a < (5 * Math.PI) / 8 ? 2 : 3;
+        }
       }
-    }
-    for (let r = 0; r < rows; r++) {
-      const up = r > 0 ? r - 1 : r, dn = r < rows - 1 ? r + 1 : r;
-      for (let c = 0; c < cols; c++) {
-        blur[r * cols + c] = (tmp[up * cols + c] + tmp[r * cols + c] + tmp[dn * cols + c]) / 3;
-      }
+    } else if (edges === 'dog') {
+      // difference of Gaussians: thin lines where a cell is darker (or, inverted, lighter) than its surroundings
+      this.blur(val, g1, 1);
+      this.blur(val, g2, 3);
     }
 
-    const range = Math.max(0.12, this.hi - this.lo);
-    const m = this.mask;
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const i = r * cols + c;
-        const dark = Math.pow(clamp01((this.hi - lum[i]) / range), 0.9);
-        const detail = clamp01((blur[i] - lum[i]) * 3.4);
-        let t;
+        let t = invert ? val[i] : 1 - val[i];
+        if (edges === 'sobel') {
+          t *= 0.4;
+        } else if (edges === 'dog') {
+          const line = clamp01((invert ? g1[i] - g2[i] : g2[i] - g1[i]) * 9 - 0.05);
+          t = Math.max(t * 0.3, line);
+        }
         if (mask) {
           const mm = smooth(0.35, 0.8, m[i]);
-          const gx = (c < cols - 1 ? m[i + 1] : m[i]) - (c > 0 ? m[i - 1] : m[i]);
-          const gy = (r < rows - 1 ? m[i + cols] : m[i]) - (r > 0 ? m[i - cols] : m[i]);
-          const edge = clamp01(Math.sqrt(gx * gx + gy * gy) * 1.4);
-          t = mm * (0.18 + 0.7 * dark + 0.55 * detail);
-          if (edge * 0.7 > t) t = edge * 0.7;
-        } else {
-          t = clamp01(dark * 1.12 - 0.14 + detail * 0.5);
+          t *= mm;
+          edge[i] *= mm;
         }
-        t = t > 1 ? 1 : t;
         const d = Math.abs(t - prev[i]);
         motion[i] = Math.max(d, motion[i] * 0.86);
         prev[i] = target[i];
@@ -173,13 +222,14 @@ export class AsciiField {
       }
     }
 
-    this.measureBody();
+    this.measureBody(!!mask);
   }
 
-  measureBody() {
+  // where the subject is, so effects can settle around it
+  measureBody(hasMask) {
     const { cols, rows, cellW, cellH } = this;
-    const src = this.hasMask ? this.mask : this.target;
-    const thr = this.hasMask ? 0.5 : 0.4;
+    const src = hasMask ? this.mask : this.target;
+    const thr = hasMask ? 0.5 : 0.4;
     let sx = 0, sy = 0, cnt = 0, minX = cols, maxX = 0, minY = rows, maxY = 0;
     const edges = [];
     const cells = [];
@@ -258,14 +308,14 @@ export class AsciiField {
     }
   }
 
-  update(dt, liveliness = 1) {
+  update(dt) {
     const { cols, rows, ink, target, prev, motion, dx, dy, vx, vy, cellW, cellH } = this;
     const n = cols * rows;
     const attack = 1 - Math.exp(-dt * 26);
     const release = 1 - Math.exp(-dt * 5.5); // slow release = soft trails
     const K = 95, C = 10.5;
     const maxD = cellW * 2.6;
-    const lag = 26 * liveliness;
+    const lag = 26;
     const seed = (performance.now() / 90) | 0;
     for (let i = 0; i < n; i++) {
       const t = target[i];
@@ -299,59 +349,107 @@ export class AsciiField {
     }
   }
 
-  draw(ctx, style, time) {
-    const { cols, rows, cellW, cellH, ink, dx, dy, vx, vy, fxA, fxG } = this;
-    const glyphs = style.glyphs;
-    const ng = glyphs ? glyphs.length : 0;
-    const tick = (time * 1.4) | 0;
+  // Map ink onto n ramp levels: straight quantisation, error diffusion or ordered.
+  levels(n, dither) {
+    const { cols, rows, ink, err } = this;
+    const top = n - 1;
+    if (dither === 'floyd' || dither === 'atkinson') {
+      // err holds the running error, and each cell is overwritten with its level once visited
+      err.set(ink);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const i = r * cols + c;
+          const v = err[i];
+          const lvl = Math.max(0, Math.min(top, Math.round(v * top)));
+          const e = v - lvl / top;
+          err[i] = lvl;
+          const R = c < cols - 1, L = c > 0, D = r < rows - 1;
+          if (dither === 'floyd') {
+            if (R) err[i + 1] += e * 0.4375;
+            if (D) {
+              if (L) err[i + cols - 1] += e * 0.1875;
+              err[i + cols] += e * 0.3125;
+              if (R) err[i + cols + 1] += e * 0.0625;
+            }
+          } else {
+            const f = e / 8;
+            if (R) err[i + 1] += f;
+            if (c < cols - 2) err[i + 2] += f;
+            if (D) {
+              if (L) err[i + cols - 1] += f;
+              err[i + cols] += f;
+              if (R) err[i + cols + 1] += f;
+            }
+            if (r < rows - 2) err[i + 2 * cols] += f;
+          }
+        }
+      }
+    } else if (dither === 'bayer') {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const i = r * cols + c;
+          err[i] = Math.max(0, Math.min(top, Math.floor(ink[i] * top + BAYER4[(r & 3) * 4 + (c & 3)])));
+        }
+      }
+    } else {
+      for (let i = 0; i < cols * rows; i++) err[i] = Math.min(top, Math.floor(ink[i] * n));
+    }
+    return err;
+  }
 
+  draw(ctx, style, opts) {
+    const { cols, rows, cellW, cellH, ink, dx, dy, edge, edgeDir, shown, fxA, fxG, fxK } = this;
     const textMode = style.mode === 'text';
-    const text = style.text;
-    const tl = text ? text.length : 0;
+    const ramp = style.glyphs;
+    const lv = this.levels(textMode ? 2 : ramp.length, opts.dither);
+    const sobel = opts.edges === 'sobel';
+    const size = cellH * (style.scale || 0.98);
 
     for (let r = 0; r < rows; r++) {
       let seq = r * 11;
       const y0 = (r + 0.5) * cellH;
       for (let c = 0; c < cols; c++) {
         const i = r * cols + c;
-        const v = ink[i];
-        const f = fxA[i];
-        const inked = v >= 0.035;
-        // text mode walks the phrase over inked cells, even ones an effect takes over
-        const textG = textMode && inked ? style.textGlyphs[seq++ % tl] : null;
-        if (!inked && f < 0.035) continue;
-        const breathe = Math.sin(time * 1.2 + c * 0.37 + r * 0.23) * 0.45;
-        const x = (c + 0.5) * cellW + dx[i];
-        const y = y0 + dy[i] + breathe;
-        let g, size, alpha;
-        if (f >= 0.035 && f >= v * 0.5) {
-          // an effect owns this cell: its glyph replaces the portrait's
-          const s = f > v ? f : v;
-          g = fxG[i];
-          size = cellH * (0.8 + 0.32 * s);
-          alpha = 0.16 + s * 1.05;
+        let g = null, alpha = 1;
+        if (textMode) seq++;
+        if (fxA[i] >= 0.05) {
+          // an effect owns this cell
+          alpha = Math.min(1, 0.3 + fxA[i]);
+          if (fxG[i] === INVERT) {
+            if (textMode) g = ink[i] < 0.3 ? style.text[(seq - 1) % style.text.length] : null;
+            else g = ramp[ramp.length - 1 - lv[i]];
+          } else {
+            g = fxG[i];
+          }
+        } else if (sobel && edge[i] > 0.28) {
+          g = style.edgeGlyphs[edgeDir[i]];
         } else if (textMode) {
-          if (!textG) continue;
-          g = textG;
-          size = cellH * (0.74 + 0.34 * v);
-          alpha = 0.14 + v * 1.1;
+          const on = opts.dither ? lv[i] > 0 : ink[i] > 0.08;
+          if (on) {
+            g = style.text[(seq - 1) % style.text.length];
+            if (!opts.dither) alpha = 0.2 + ink[i];
+          }
         } else {
-          let idx = Math.min(ng - 1, (v * ng) | 0);
-          // an occasional glyph flickers one step — the portrait breathes
-          if (ng > 1 && hash(i * 131 + tick) < 0.015) idx = Math.max(0, Math.min(ng - 1, idx + (hash(i + tick) < 0.5 ? -1 : 1)));
-          g = glyphs[idx];
-          size = ng === 1 ? cellH * (0.46 + 0.8 * v) : cellH * (0.8 + 0.32 * v);
-          alpha = 0.16 + v * 1.05;
+          g = ramp[lv[i]];
         }
-        stamp(ctx, g, x, y, size, alpha);
-
-        // fast-moving glyphs leave a faint echo — a subtle stretch
-        const sp = vx[i] * vx[i] + vy[i] * vy[i];
-        if (sp > 1600) {
-          stamp(ctx, g, x - vx[i] * 0.045, y - vy[i] * 0.045, size * 0.82, alpha * 0.3);
-        }
+        // the portrait makes room around effects
+        if (fxA[i] < 0.05 && fxK[i] > 0) alpha *= 1 - fxK[i];
+        shown[i] = g;
+        if (g) stamp(ctx, g, (c + 0.5) * cellW + dx[i], y0 + dy[i], size, alpha);
       }
     }
     ctx.globalAlpha = 1;
+  }
+
+  // the last drawn frame as plain text
+  toText() {
+    const { cols, rows, shown } = this;
+    const lines = [];
+    for (let r = 0; r < rows; r++) {
+      let s = '';
+      for (let c = 0; c < cols; c++) s += shown[r * cols + c]?.ch ?? ' ';
+      lines.push(s.trimEnd());
+    }
+    return lines.join('\n');
   }
 }

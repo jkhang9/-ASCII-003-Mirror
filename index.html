@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ASCII Camera</title>
-  <meta name="description" content="A live ASCII mirror. Hand gestures set off effects inside the character grid.">
-  <meta name="theme-color" content="#f3f3f1">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231c1e21'/%3E%3Ctext x='32' y='44' font-size='36' text-anchor='middle' font-family='monospace' fill='%23f3f3f1'%3E%23%3C/text%3E%3C/svg%3E">
+  <meta name="description" content="A live ASCII mirror with a customizer: brightness, contrast, dithering, character sets and edge detection.">
+  <meta name="theme-color" content="#f2f2f2">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23111111'/%3E%3Ctext x='32' y='44' font-size='36' text-anchor='middle' font-family='monospace' fill='%23f2f2f2'%3E%23%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap">
@@ -62,51 +62,97 @@
       </div>
     </section>
 
-    <aside class="panel" aria-label="Settings">
-      <div class="field">
-        <div class="field__label" id="charsetLabel">Characters</div>
-        <div class="chips" role="radiogroup" aria-labelledby="charsetLabel">
-          <button class="chip" type="button" role="radio" data-set="dot" aria-label="dots">.</button>
-          <button class="chip" type="button" role="radio" data-set="plus" aria-label="plus signs">+</button>
-          <button class="chip" type="button" role="radio" data-set="x" aria-label="x marks">x</button>
-          <button class="chip" type="button" role="radio" data-set="o" aria-label="circles">o</button>
-          <button class="chip" type="button" role="radio" data-set="hash" aria-label="hashes">#</button>
-          <button class="chip" type="button" role="radio" data-set="at" aria-label="at signs">@</button>
-          <button class="chip chip--wide" type="button" role="radio" data-set="mixed" aria-label="mixed">. + * o , :</button>
+    <aside class="panel" aria-label="Controls">
+      <section class="group">
+        <h2 class="group__title">Image</h2>
+        <div class="slider">
+          <label for="brightness">Brightness</label><output data-for="brightness"></output>
+          <input class="range" type="range" id="brightness" data-setting="brightness" min="-100" max="100" step="1">
         </div>
-        <label class="custom">
-          <span class="muted small">Or type your own</span>
-          <input id="customText" class="custom__input" type="text" maxlength="48" placeholder="hello, you" autocomplete="off" spellcheck="false">
+        <div class="slider">
+          <label for="contrast">Contrast</label><output data-for="contrast"></output>
+          <input class="range" type="range" id="contrast" data-setting="contrast" min="0.2" max="3" step="0.1">
+        </div>
+        <div class="slider">
+          <label for="blur">Blur</label><output data-for="blur"></output>
+          <input class="range" type="range" id="blur" data-setting="blur" min="0" max="4" step="1">
+        </div>
+        <label class="check"><input type="checkbox" data-setting="invert"><span class="check__box" aria-hidden="true"></span>Invert</label>
+      </section>
+
+      <section class="group">
+        <h2 class="group__title">Characters</h2>
+        <label class="row">
+          <span>Character set</span>
+          <select class="select" id="charset" data-setting="charset">
+            <option value="classic">Classic</option>
+            <option value="detailed">Detailed</option>
+            <option value="blocks">Blocks</option>
+            <option value="symbols">Symbols</option>
+            <option value="minimal">Minimal</option>
+            <option value="binary">Binary</option>
+            <option value="custom">Custom…</option>
+          </select>
         </label>
-      </div>
+        <label class="row row--stack" id="customRow">
+          <span class="muted small">A few symbols, or words to write with</span>
+          <input class="input" type="text" data-setting="custom" maxlength="48" placeholder="hello, you" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="slider">
+          <label for="density">Density</label><output data-for="density"></output>
+          <input class="range" type="range" id="density" data-setting="density" min="0" max="1" step="0.01">
+        </div>
+      </section>
 
-      <div class="field">
-        <label class="field__label" for="density">Density</label>
-        <input class="range" type="range" id="density" min="0" max="1" step="0.01" value="0.55">
-        <div class="range__ends muted small"><span>Coarse</span><span>Detailed</span></div>
-      </div>
+      <section class="group">
+        <h2 class="group__title">Dithering</h2>
+        <label class="check"><input type="checkbox" data-setting="dither"><span class="check__box" aria-hidden="true"></span>Dither</label>
+        <label class="row">
+          <span>Algorithm</span>
+          <select class="select" id="ditherAlgo" data-setting="ditherAlgo">
+            <option value="floyd">Floyd–Steinberg</option>
+            <option value="atkinson">Atkinson</option>
+            <option value="bayer">Ordered (Bayer)</option>
+          </select>
+        </label>
+      </section>
 
-      <div class="field">
-        <label class="field__label" for="sensitivity">Motion sensitivity</label>
-        <input class="range" type="range" id="sensitivity" min="0" max="1" step="0.01" value="0.5">
-        <div class="range__ends muted small"><span>Calm</span><span>Twitchy</span></div>
-      </div>
+      <section class="group">
+        <h2 class="group__title" id="edgesLabel">Edge detection</h2>
+        <div class="segmented" role="radiogroup" aria-labelledby="edgesLabel">
+          <label><input type="radio" name="edges" value="none" data-setting="edges"><span>None</span></label>
+          <label><input type="radio" name="edges" value="sobel" data-setting="edges"><span>Sobel</span></label>
+          <label><input type="radio" name="edges" value="dog" data-setting="edges"><span>DoG</span></label>
+        </div>
+      </section>
 
-      <fieldset class="field">
-        <legend class="field__label">Gestures</legend>
-        <ul class="gestures">
-          <li class="gesture" data-gesture="wave"><label class="toggle"><input type="checkbox" data-effect="wave" checked><span class="toggle__box" aria-hidden="true"></span><span>Wave <span class="muted">sparkles</span></span></label><button class="try" type="button" data-try="wave">Try</button></li>
-          <li class="gesture" data-gesture="fireworks"><label class="toggle"><input type="checkbox" data-effect="fireworks" checked><span class="toggle__box" aria-hidden="true"></span><span>Fist → open <span class="muted">fireworks</span></span></label><button class="try" type="button" data-try="fireworks">Try</button></li>
-          <li class="gesture" data-gesture="thumbsUp"><label class="toggle"><input type="checkbox" data-effect="thumbsUp" checked><span class="toggle__box" aria-hidden="true"></span><span>Thumbs up <span class="muted">spark</span></span></label><button class="try" type="button" data-try="thumbsUp">Try</button></li>
-          <li class="gesture" data-gesture="doubleThumbs"><label class="toggle"><input type="checkbox" data-effect="doubleThumbs" checked><span class="toggle__box" aria-hidden="true"></span><span>Two thumbs <span class="muted">celebration</span></span></label><button class="try" type="button" data-try="doubleThumbs">Try</button></li>
-          <li class="gesture" data-gesture="peace"><label class="toggle"><input type="checkbox" data-effect="peace" checked><span class="toggle__box" aria-hidden="true"></span><span>Peace <span class="muted">star burst</span></span></label><button class="try" type="button" data-try="peace">Try</button></li>
-          <li class="gesture" data-gesture="heart"><label class="toggle"><input type="checkbox" data-effect="heart" checked><span class="toggle__box" aria-hidden="true"></span><span>Heart hands <span class="muted">hearts</span></span></label><button class="try" type="button" data-try="heart">Try</button></li>
-        </ul>
-      </fieldset>
+      <section class="group">
+        <h2 class="group__title">Gestures</h2>
+        <label class="check"><input type="checkbox" data-setting="gestures"><span class="check__box" aria-hidden="true"></span>Gesture effects</label>
+        <div class="slider">
+          <label for="sensitivity">Sensitivity</label><output data-for="sensitivity"></output>
+          <input class="range" type="range" id="sensitivity" data-setting="sensitivity" min="0" max="1" step="0.01">
+        </div>
+        <p class="muted small note">Keys 1–6 preview the effects.</p>
+      </section>
 
-      <div class="panel__foot">
-        <button class="btn btn--small" id="snapBtn" type="button">Save a frame</button>
-        <span class="muted small">Keys 1–6 preview</span>
+      <section class="group">
+        <h2 class="group__title">Camera</h2>
+        <label class="check"><input type="checkbox" data-setting="removeBg"><span class="check__box" aria-hidden="true"></span>Remove background</label>
+        <label class="check"><input type="checkbox" data-setting="mirror"><span class="check__box" aria-hidden="true"></span>Mirror</label>
+        <div class="row">
+          <span id="themeLabel">Canvas</span>
+          <div class="segmented segmented--inline" role="radiogroup" aria-labelledby="themeLabel">
+            <label><input type="radio" name="theme" value="light" data-setting="theme"><span>Light</span></label>
+            <label><input type="radio" name="theme" value="dark" data-setting="theme"><span>Dark</span></label>
+          </div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button class="btn" id="resetBtn" type="button">Reset</button>
+        <button class="btn" id="copyBtn" type="button">Copy text</button>
+        <button class="btn btn--ink" id="snapBtn" type="button">Save PNG</button>
       </div>
     </aside>
   </main>

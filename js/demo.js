@@ -113,10 +113,4 @@ export class DemoSitter {
     for (let i = 0, j = 0; i < this.mask.length; i++, j += 4) this.mask[i] = d[j] / 255;
     return { data: this.mask, width: mw, height: mh };
   }
-
-  // where a hand might plausibly be, for previews (stage px)
-  handSpot(W, H, side = 1) {
-    const { cx } = this.pose(W, H);
-    return { x: cx + side * H * 0.34, y: H * 0.62 };
-  }
 }

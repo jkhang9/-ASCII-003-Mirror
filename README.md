@@ -1,6 +1,6 @@
 # ASCII Camera
 
-A live mirror drawn in text characters. A few hand gestures set off effects inside the same character grid: they swap glyphs cell by cell instead of being painted on top. It's a static page with no build step, and everything runs locally in the browser. No video leaves the machine.
+A live mirror drawn in text characters, in black and white. A customizer tunes the image, and a few hand gestures set off effects inside the same character grid: they swap, invert or clear cells instead of being painted on top. It's a static page with no build step, and everything runs locally in the browser. No video leaves the machine.
 
 ## Run it
 
@@ -11,28 +11,41 @@ python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-Desktop Chrome, Edge or Arc works best. Safari and Firefox work too, but tracking runs slower there.
+Desktop Chrome, Edge or Arc works best. Safari and Firefox work too, but tracking runs slower there. Without a camera, choose **play without a camera** to get a paper-doll sitter.
+
+## Customizer
+
+| Group | Controls |
+|---|---|
+| Image | brightness, contrast, blur, invert |
+| Characters | character set (classic, detailed, blocks, symbols, minimal, binary, or your own symbols or words), density |
+| Dithering | Floyd–Steinberg, Atkinson or ordered (Bayer) |
+| Edge detection | none, Sobel (draws `\| / - \` along edges), DoG (line-art outlines) |
+| Gestures | effects on/off, sensitivity |
+| Camera | remove background, mirror, light or dark canvas |
+
+**Reset** restores the defaults, **Copy text** copies the current frame as plain text, and **Save PNG** downloads it. Settings are remembered in the browser.
 
 ## Gestures
 
-| # | Gesture | Effect | Intensity |
-|---|---------|--------|-----------|
-| 01 | Wave | `* + x .` shed from the hand and settle along your outline | ambient |
-| 02 | Fist → quickly open | a firework bursts through the grid from the opening hand | biggest |
-| 03 | Thumbs up | a small cluster of `+ * .` | small |
-| 04 | Two thumbs up | sparkles across the whole portrait, plus a halo | large |
-| 05 | Peace | stars trace the V of your fingers, then pop | small |
-| 06 | Heart hands | a heart traced in `♥ . +` blooms, and hearts orbit you | medium |
+| Key | Gesture | Effect |
+|---|---------|--------|
+| 1 | Wave | `* + x o` shed from the hand and settle along your outline |
+| 2 | Fist → quickly open | a starburst of characters with trails |
+| 3 | Thumbs up | a fountain of sparks that falls back down |
+| 4 | Two thumbs up | sparks from both hands, sparkles across the portrait, and a halo |
+| 5 | Peace | stars trace the V of your fingers, then burst at the fingertips |
+| 6 | Heart hands | a beating heart-shaped window that inverts the portrait, plus smaller hearts |
 
-Number keys `1`–`6`, or the **Try** buttons, preview each effect without a camera. Without a camera you can also choose **play without a camera**, which swaps in a paper-doll sitter.
+The number keys preview each effect without a camera.
 
 ## How it works
 
 - **`js/vision.js`** loads MediaPipe Tasks Vision from jsDelivr. It runs a hand landmarker (2 hands) and a selfie segmenter, on the GPU when one is available and on the CPU otherwise.
-- **`js/ascii.js`** shrinks the mirrored frame to one pixel per character cell. It turns that into "ink" using auto-levels, a local-contrast term for eyes and mouth, and the segmentation mask so the silhouette stays clean. Every cell has a small spring. Image motion (normal flow) nudges glyphs so they lag behind you, hands stir the glyphs they pass through, and ink fades out slower than it fades in, which leaves soft trails.
-- **`js/gestures.js`** classifies each hand from MediaPipe's *world* landmarks, which are metric 3D. That makes finger curl independent of distance and rotation. The thresholds were calibrated on MediaPipe's sample photos. Small state machines then handle holds, the fist→open window, wave swings, heart geometry and one-shot-per-pose, with a cooldown per gesture. The sensitivity slider scales all of these.
-- **`js/effects.js`** is a character particle system with free, seek, orbit and hold motion, twinkle and trails. Particles are never drawn on their own: each frame they are rasterised into the portrait's effect layer, so a particle takes over the cell it is in and the grid is drawn once. Big effects also send a shockwave through the portrait's springs.
-- **`js/palette.js`** holds the canvas colours, matched to the custom properties in `styles.css`.
+- **`js/ascii.js`** shrinks the frame to one pixel per character cell and turns it into "ink": auto-levels, then blur, brightness, contrast, invert, edges and the optional background mask. Drawing maps ink onto the character ramp, with optional dithering. Every cell has a small spring: image motion nudges glyphs so they lag behind you, hands and effects push them, and ink fades out slower than it fades in.
+- **`js/gestures.js`** classifies each hand from MediaPipe's *world* landmarks, which are metric 3D, so finger curl doesn't depend on distance or rotation. Small state machines handle holds, the fist→open window, wave swings, heart geometry and a cooldown per gesture. The sensitivity slider scales all of these.
+- **`js/effects.js`** is a character particle system. Particles are never drawn on their own: each frame they are written into the field's effect layer, where a particle takes over its cell and fades the portrait in the cells around it. Hearts invert the portrait's tone inside a heart shape.
+- **`js/palette.js`** holds the canvas colours for the light and dark canvas, matched to `styles.css`.
 - **`js/glyphs.js`** pre-renders each glyph once and stamps it with `drawImage`, which keeps a frame with 10k+ glyphs cheap.
 
 Add `?debug` to the URL to expose the internals as `window.asciiCamera`.
