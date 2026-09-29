@@ -37,13 +37,13 @@ The panel is one column, ordered like a design tool's inspector: the controls yo
 | 5 | Peace | stars trace the V of your fingers, then burst at the fingertips |
 | 6 | Heart hands | a beating heart-shaped window that inverts the portrait, plus smaller hearts |
 
-The gestures sit in a strip under the mirror: each can be switched on or off, and its **Try** button (or number key) previews the effect without a camera. The sensitivity slider is at the end of that strip.
+The gestures sit in a strip under the mirror: each can be switched on or off, and its **Try** button (or number key) previews the effect without a camera.
 
 ## How it works
 
 - **`js/vision.js`** loads MediaPipe Tasks Vision from jsDelivr. It runs a hand landmarker (2 hands) and a selfie segmenter, on the GPU when one is available and on the CPU otherwise.
 - **`js/ascii.js`** shrinks the frame to one pixel per character cell and turns it into "ink": auto-levels, then blur, brightness, contrast, invert, edges and the optional background mask. Drawing maps ink onto the character ramp. Every cell has a small spring: image motion nudges glyphs so they lag behind you, hands and effects push them, and ink fades out slower than it fades in.
-- **`js/gestures.js`** classifies each hand from MediaPipe's *world* landmarks, which are metric 3D, so finger curl doesn't depend on distance or rotation. Small state machines handle holds, the fist→open window, wave swings, heart geometry and a cooldown per gesture. The sensitivity slider scales all of these.
+- **`js/gestures.js`** classifies each hand from MediaPipe's *world* landmarks, which are metric 3D, so finger curl doesn't depend on distance or rotation. Small state machines handle holds, the fist→open window, wave swings, heart geometry and a cooldown per gesture.
 - **`js/effects.js`** is a character particle system. Particles are never drawn on their own: each frame they are written into the field's effect layer, where a particle takes over its cell and fades the portrait in the cells around it. Hearts invert the portrait's tone inside a heart shape.
 - **`js/palette.js`** holds the canvas colours for the light and dark canvas, matched to `styles.css`.
 - **`js/glyphs.js`** pre-renders each glyph once and stamps it with `drawImage`, which keeps a frame with 10k+ glyphs cheap.

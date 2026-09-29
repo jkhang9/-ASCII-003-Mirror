@@ -253,14 +253,7 @@ body {
 /* label | slider | value */
 .prop--slider {
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr) 38px;
-}
-.prop--slider output {
-  text-align: right;
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink-soft);
-  font-variant-numeric: tabular-nums;
+  grid-template-columns: 76px minmax(0, 1fr);
 }
 
 /* the last chip is a text box: type into it and it becomes the selected set */
@@ -294,11 +287,6 @@ body {
   display: flex;
   align-items: baseline;
   gap: 12px;
-}
-.gesture-bar__sens {
-  margin-left: auto;
-  width: 280px;
-  align-self: center;
 }
 .gestures {
   list-style: none;
@@ -444,6 +432,5 @@ body {
   .panel { position: static; max-height: none; overflow: visible; padding: 0; margin: 0; }
   .stage { height: clamp(340px, 66vh, 760px); }
   .gesture-bar__head { flex-wrap: wrap; }
-  .gesture-bar__sens { width: 100%; margin-left: 0; }
   .gestures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

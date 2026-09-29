@@ -27,6 +27,8 @@ const GESTURE_NAMES = {
   peace: 'Peace',
   heart: 'Heart hands',
 };
+// how readily poses are recognised (0 calm … 1 twitchy)
+const GESTURE_SENSITIVITY = 0.5;
 const ALL_ON = Object.fromEntries(GESTURES.map((g) => [g, true]));
 
 // ramps run from no ink to most ink; a space means an empty cell
@@ -52,7 +54,6 @@ const DEFAULTS = {
   density: 0.55,
   edges: 'none',
   effects: ALL_ON,
-  sensitivity: 0.5,
   removeBg: false,
   mirror: true,
   theme: 'light',
@@ -459,7 +460,7 @@ function frame(now) {
 
   // gestures
   if (state.mode === 'camera' && fresh && state.visionState === 'ready') {
-    const out = engine.update(state.hands, now, settings.sensitivity, settings.effects);
+    const out = engine.update(state.hands, now, GESTURE_SENSITIVITY, settings.effects);
     state.waving = out.waving;
     state.moving = out.moving;
     for (const ev of out.events) playEffect(ev);
@@ -495,13 +496,6 @@ function frame(now) {
 
 const controls = [...document.querySelectorAll('[data-setting]')];
 
-function formatValue(key, v) {
-  if (key === 'brightness') return (v > 0 ? '+' : '') + v;
-  if (key === 'contrast') return (+v).toFixed(1);
-  if (key === 'density' || key === 'sensitivity') return Math.round(v * 100) + '%';
-  return String(v);
-}
-
 function syncControls() {
   for (const el of controls) {
     const key = el.dataset.setting;
@@ -510,15 +504,11 @@ function syncControls() {
     else if (el.type === 'radio') el.checked = el.value === v;
     else if (el.value !== String(v)) el.value = v;
   }
-  document.querySelectorAll('output[data-for]').forEach((o) => {
-    o.textContent = formatValue(o.dataset.for, settings[o.dataset.for]);
-  });
   $('#customChip').classList.toggle('is-active', settings.charset === 'custom');
   document.querySelectorAll('[data-effect]').forEach((el) => {
     el.checked = !!settings.effects[el.dataset.effect];
     el.closest('.gesture').classList.toggle('is-off', !el.checked);
   });
-  $('#sensitivity').disabled = !anyGesture();
 }
 
 // typing in the custom chip selects it; clearing it goes back to the last preset
