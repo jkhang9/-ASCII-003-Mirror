@@ -60,6 +60,44 @@
         <span class="status" id="status" data-state="idle" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="statusText">Standing by</span><span class="status__aux" id="statusAux"></span></span>
         <span class="hint muted" id="hint" aria-live="polite"></span>
       </div>
+
+      <section class="gesture-bar" aria-labelledby="gesturesLabel">
+        <div class="gesture-bar__head">
+          <h3 class="section__title" id="gesturesLabel">Gestures</h3>
+          <span class="muted small">Keys 1–6 to preview</span>
+          <div class="prop prop--slider gesture-bar__sens">
+            <label for="sensitivity">Sensitivity</label>
+            <input class="range" type="range" id="sensitivity" data-setting="sensitivity" min="0" max="1" step="0.01">
+            <output data-for="sensitivity"></output>
+          </div>
+        </div>
+        <ul class="gestures">
+          <li class="gesture" data-gesture="wave">
+            <label class="check"><input type="checkbox" data-effect="wave"><span class="check__box" aria-hidden="true"></span><span class="gesture__text"><span>Wave</span><span class="muted small">sparkles</span></span></label>
+            <button class="try" type="button" data-try="wave">Try</button>
+          </li>
+          <li class="gesture" data-gesture="fireworks">
+            <label class="check"><input type="checkbox" data-effect="fireworks"><span class="check__box" aria-hidden="true"></span><span class="gesture__text"><span>Fist → open</span><span class="muted small">fireworks</span></span></label>
+            <button class="try" type="button" data-try="fireworks">Try</button>
+          </li>
+          <li class="gesture" data-gesture="thumbsUp">
+            <label class="check"><input type="checkbox" data-effect="thumbsUp"><span class="check__box" aria-hidden="true"></span><span class="gesture__text"><span>Thumbs up</span><span class="muted small">spark</span></span></label>
+            <button class="try" type="button" data-try="thumbsUp">Try</button>
+          </li>
+          <li class="gesture" data-gesture="doubleThumbs">
+            <label class="check"><input type="checkbox" data-effect="doubleThumbs"><span class="check__box" aria-hidden="true"></span><span class="gesture__text"><span>Two thumbs</span><span class="muted small">celebration</span></span></label>
+            <button class="try" type="button" data-try="doubleThumbs">Try</button>
+          </li>
+          <li class="gesture" data-gesture="peace">
+            <label class="check"><input type="checkbox" data-effect="peace"><span class="check__box" aria-hidden="true"></span><span class="gesture__text"><span>Peace</span><span class="muted small">star burst</span></span></label>
+            <button class="try" type="button" data-try="peace">Try</button>
+          </li>
+          <li class="gesture" data-gesture="heart">
+            <label class="check"><input type="checkbox" data-effect="heart"><span class="check__box" aria-hidden="true"></span><span class="gesture__text"><span>Heart hands</span><span class="muted small">hearts</span></span></label>
+            <button class="try" type="button" data-try="heart">Try</button>
+          </li>
+        </ul>
+      </section>
     </section>
 
     <aside class="panel" aria-label="Customize">
@@ -117,26 +155,6 @@
             <label title="Difference of Gaussians: line-art outlines"><input type="radio" name="edges" value="dog" data-setting="edges"><span>DoG</span></label>
           </div>
         </div>
-      </section>
-
-      <section class="section" aria-labelledby="gesturesLabel">
-        <div class="section__head">
-          <h3 class="section__title" id="gesturesLabel">Gestures</h3>
-          <span class="muted small">Keys 1–6 to preview</span>
-        </div>
-        <ul class="gestures">
-          <li class="gesture" data-gesture="wave"><label class="check"><input type="checkbox" data-effect="wave"><span class="check__box" aria-hidden="true"></span><span>Wave <span class="muted">sparkles</span></span></label><button class="try" type="button" data-try="wave">Try</button></li>
-          <li class="gesture" data-gesture="fireworks"><label class="check"><input type="checkbox" data-effect="fireworks"><span class="check__box" aria-hidden="true"></span><span>Fist → open <span class="muted">fireworks</span></span></label><button class="try" type="button" data-try="fireworks">Try</button></li>
-          <li class="gesture" data-gesture="thumbsUp"><label class="check"><input type="checkbox" data-effect="thumbsUp"><span class="check__box" aria-hidden="true"></span><span>Thumbs up <span class="muted">spark</span></span></label><button class="try" type="button" data-try="thumbsUp">Try</button></li>
-          <li class="gesture" data-gesture="doubleThumbs"><label class="check"><input type="checkbox" data-effect="doubleThumbs"><span class="check__box" aria-hidden="true"></span><span>Two thumbs <span class="muted">celebration</span></span></label><button class="try" type="button" data-try="doubleThumbs">Try</button></li>
-          <li class="gesture" data-gesture="peace"><label class="check"><input type="checkbox" data-effect="peace"><span class="check__box" aria-hidden="true"></span><span>Peace <span class="muted">star burst</span></span></label><button class="try" type="button" data-try="peace">Try</button></li>
-          <li class="gesture" data-gesture="heart"><label class="check"><input type="checkbox" data-effect="heart"><span class="check__box" aria-hidden="true"></span><span>Heart hands <span class="muted">hearts</span></span></label><button class="try" type="button" data-try="heart">Try</button></li>
-        </ul>
-      <div class="prop prop--slider">
-        <label for="sensitivity">Sensitivity</label>
-        <input class="range" type="range" id="sensitivity" data-setting="sensitivity" min="0" max="1" step="0.01">
-        <output data-for="sensitivity"></output>
-      </div>
       </section>
 
       <section class="section" aria-labelledby="viewLabel">

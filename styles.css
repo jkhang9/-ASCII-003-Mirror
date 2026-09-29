@@ -74,7 +74,7 @@ body {
 
 .stage {
   position: relative;
-  height: clamp(380px, 78vh, 940px);
+  height: clamp(380px, calc(100vh - 250px), 900px);
   border-radius: 6px;
   overflow: hidden;
   background: var(--bg);
@@ -284,25 +284,46 @@ body {
 .chip-input.is-active .chip-input__field:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
 
 
+/* gestures run horizontally under the mirror */
+.gesture-bar {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.gesture-bar__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.gesture-bar__sens {
+  margin-left: auto;
+  width: 280px;
+  align-self: center;
+}
 .gestures {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 2px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
 }
 .gesture {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
-  padding: 2px 6px;
-  margin: 0 -6px;
-  border-radius: 5px;
+  gap: 6px;
+  padding: 8px 8px 8px 10px;
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--rule);
   transition: background 0.3s;
 }
-.gesture.is-hit { background: rgba(0, 0, 0, 0.07); }
-.gesture.is-off .check { color: var(--muted); }
+.gesture .check { align-items: flex-start; }
+.gesture .check__box { margin-top: 2px; }
+.gesture__text { display: grid; gap: 1px; line-height: 1.3; }
+.gesture.is-hit { background: #e4e4e4; }
+.gesture.is-off .gesture__text > span:first-child { color: var(--muted); }
 .try {
   appearance: none;
   border: 0;
@@ -414,8 +435,15 @@ body {
 
 /* ───────────────────────── responsive */
 
+@media (max-width: 1180px) {
+  .gestures { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
 @media (max-width: 900px) {
   .playground { grid-template-columns: minmax(0, 1fr); }
   .panel { position: static; max-height: none; overflow: visible; padding: 0; margin: 0; }
   .stage { height: clamp(340px, 66vh, 760px); }
+  .gesture-bar__head { flex-wrap: wrap; }
+  .gesture-bar__sens { width: 100%; margin-left: 0; }
+  .gestures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

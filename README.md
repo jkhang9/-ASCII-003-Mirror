@@ -22,7 +22,6 @@ The panel is one column, ordered like a design tool's inspector: the controls yo
 | Characters | character set (classic, detailed, blocks, symbols, minimal, binary, or type your own symbols or words into the last chip), density |
 | Adjust | brightness, contrast, blur, invert |
 | Edges | none, Sobel (draws `\| / - \` along edges), DoG (line-art outlines) |
-| Gestures | each effect on/off with a **Try** button, sensitivity |
 | View | light or dark canvas, mirror, remove background |
 
 **Reset** restores the defaults, **Copy text** copies the current frame as plain text, and **Save PNG** downloads it. Settings are remembered in the browser.
@@ -38,7 +37,7 @@ The panel is one column, ordered like a design tool's inspector: the controls yo
 | 5 | Peace | stars trace the V of your fingers, then burst at the fingertips |
 | 6 | Heart hands | a beating heart-shaped window that inverts the portrait, plus smaller hearts |
 
-The **Try** buttons and number keys preview each effect without a camera.
+The gestures sit in a strip under the mirror: each can be switched on or off, and its **Try** button (or number key) previews the effect without a camera. The sensitivity slider is at the end of that strip.
 
 ## How it works
 
