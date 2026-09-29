@@ -1,29 +1,27 @@
-// Typographic particles. Every effect is made of characters that are born,
-// move with a little physics, twinkle and fade. Intensity follows a strict
-// hierarchy: wave (ambient) < thumbs / peace (small) < hearts (medium)
-// < celebration (large) < fireworks (biggest).
+// Character particles that live inside the portrait's grid. Each particle
+// moves with a little physics, but it is never painted freely on top of the
+// mirror: every frame it lights up the cell it is over, swapping that cell's
+// glyph for its own. Intensity follows a strict hierarchy: wave (ambient)
+// < thumbs / peace (small) < hearts (medium) < celebration (large)
+// < fireworks (biggest).
 
-import { stamp } from './glyphs.js';
+import { INK, SOFT, ACCENT } from './palette.js';
 
 const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[(Math.random() * arr.length) | 0];
 const MAX = 1600;
 
-export const INK = '#1b1915';
-export const SOFT = '#7d766b';
-export const ACCENT = '#df5430';
-
-const STARS = ['*', '✦', '+', '.', '✧'];
-const FIRE = ['*', '+', 'x', '.', '✦'];
-const SPARK = ['+', '✦', '·', '*'];
-const HEARTS = ['♡', '♥', '<3', '♡', '.', '+'];
+const STARS = ['*', '+', '.', 'x', '*'];
+const FIRE = ['*', '+', 'x', '.', 'o'];
+const SPARK = ['+', '*', '.', "'"];
+const HEARTS = ['♥', '♥', '*', '+', '.'];
 
 export class Effects {
   constructor(atlas) {
     this.atlas = atlas;
     this.ps = [];
-    this.unit = 1; // scales sizes and speeds with the stage
+    this.unit = 1; // scales distances and speeds with the stage
     this.body = null;
     this.field = null;
   }
@@ -36,12 +34,13 @@ export class Effects {
     const q = {
       x: 0, y: 0, vx: 0, vy: 0, ax: 0, ay: 0, drag: 1.2,
       age: 0, life: 1.5, delay: 0,
-      ch: '*', font: 'mono', color: INK, size: 14, alpha: 1,
-      twinkle: 0, phase: Math.random() * TAU, sway: 0, spin: 0,
-      pop: 0, trail: null, mode: 'free',
+      ch: '*', color: INK, alpha: 1, r: 0,
+      twinkle: 0, phase: Math.random() * TAU, sway: 0,
+      trail: null, mode: 'free',
       ...p,
     };
-    q.g = this.atlas.get(q.ch, q.color, q.font);
+    q.g = this.atlas.get(q.ch, q.color);
+    if (q.trail) q.tg = this.atlas.get('.', q.color);
     if (this.ps.length >= MAX) this.ps.shift();
     this.ps.push(q);
     return q;
@@ -66,7 +65,7 @@ export class Effects {
     return { x: b.cx + Math.cos(a) * b.rx, y: b.cy + Math.sin(a) * b.ry };
   }
 
-  // ─────────────────────────────── 01 wave → star sparkles (ambient)
+  // ─────────────────────────────── 01 wave → sparkles (ambient)
   waveTrail(hand, dt) {
     const u = this.unit;
     const rate = 38; // particles / second
@@ -86,9 +85,7 @@ export class Effects {
         drag: 1.4,
         life: rand(1.6, 3.2),
         ch: pick(STARS),
-        font: Math.random() < 0.4 ? 'serif' : 'mono',
         color: Math.random() < 0.08 ? ACCENT : Math.random() < 0.35 ? SOFT : INK,
-        size: rand(9, 18) * u,
         twinkle: rand(5, 9),
         sway: rand(4, 12) * u,
       };
@@ -106,16 +103,15 @@ export class Effects {
   // ─────────────────────────────── 02 fist → open → fireworks (biggest)
   fireworks(x, y) {
     const u = this.unit;
-    // the flash at the origin
-    this.add({ x, y, ch: '✦', font: 'serif', size: 64 * u, life: 0.55, drag: 0, pop: 1, color: ACCENT });
-    this.add({ x, y, ch: '*', size: 30 * u, life: 0.35, drag: 0, pop: 1 });
+    // the flash at the origin fills a small patch of cells
+    this.add({ x, y, ch: '#', r: 40 * u, life: 0.45, drag: 0, color: ACCENT });
 
     // shockwave ring of dots
     const ring = 42;
     for (let i = 0; i < ring; i++) {
       const a = (i / ring) * TAU;
       const sp = 620 * u;
-      this.add({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, drag: 4.2, life: 0.75, ch: '.', size: 16 * u, color: SOFT });
+      this.add({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, drag: 4.2, life: 0.75, ch: '.', color: SOFT });
     }
 
     // the main burst: fast out, slow drift, gentle fall
@@ -131,9 +127,7 @@ export class Effects {
         drag: rand(2.6, 3.4),
         life: rand(1.3, 2.5),
         ch: pick(FIRE),
-        font: Math.random() < 0.3 ? 'serif' : 'mono',
         color: Math.random() < 0.18 ? ACCENT : INK,
-        size: rand(11, 26) * u,
         twinkle: Math.random() < 0.4 ? rand(8, 16) : 0,
         trail: Math.random() < 0.45 ? [] : null,
         crackle: Math.random() < 0.18,
@@ -144,7 +138,7 @@ export class Effects {
     for (let i = 0; i < 24; i++) {
       const a = (i / 24) * TAU + 0.13;
       const sp = 300 * u;
-      this.add({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ay: 40 * u, drag: 2.2, life: 2.2, delay: 0.12, ch: '✦', font: 'serif', size: 15 * u, twinkle: 10 });
+      this.add({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ay: 40 * u, drag: 2.2, life: 2.2, delay: 0.12, ch: '*', twinkle: 10 });
     }
 
     this.field?.impulse(x, y, 320 * u, 520);
@@ -164,12 +158,10 @@ export class Effects {
         life: rand(0.8, 1.35),
         ch: pick(SPARK),
         color: Math.random() < 0.2 ? ACCENT : INK,
-        size: rand(10, 19) * u,
         twinkle: rand(8, 14),
-        pop: 0.6,
       });
     }
-    this.add({ x, y: y - 8 * u, ch: '+', size: 30 * u, life: 0.5, drag: 0, pop: 1, color: ACCENT });
+    this.add({ x, y: y - 8 * u, ch: '+', r: 16 * u, life: 0.4, drag: 0, color: ACCENT });
     this.field?.impulse(x, y, 90 * u, 90);
   }
 
@@ -201,12 +193,9 @@ export class Effects {
         drag: 0.6,
         delay: d / (900 * u),
         life: rand(1.1, 2),
-        ch: pick(['✦', '+', '*', '.', '✧', '·']),
-        font: Math.random() < 0.5 ? 'serif' : 'mono',
+        ch: pick(['*', '+', 'x', '.', ':']),
         color: Math.random() < 0.14 ? ACCENT : INK,
-        size: rand(9, 20) * u,
         twinkle: rand(6, 12),
-        pop: 0.8,
       });
     }
 
@@ -223,10 +212,8 @@ export class Effects {
         grow: 0.08,
         delay: 0.15 + (i / m) * 0.35,
         life: rand(2.4, 3),
-        ch: i % 4 === 0 ? '✦' : i % 4 === 2 ? '+' : '.',
-        font: i % 4 === 0 ? 'serif' : 'mono',
+        ch: i % 4 === 0 ? '*' : i % 4 === 2 ? '+' : '.',
         color: i % 7 === 0 ? ACCENT : INK,
-        size: (i % 4 === 0 ? 20 : 14) * u,
         twinkle: 7,
         drag: 1,
       });
@@ -235,7 +222,7 @@ export class Effects {
     this.field?.impulse(mx, my, 420 * u, 180);
   }
 
-  // ─────────────────────────────── 05 peace → tiny star burst (small)
+  // ─────────────────────────────── 05 peace → star burst (small)
   peace(base, tipA, tipB) {
     const u = this.unit;
     const trace = (tip, off) => {
@@ -252,11 +239,8 @@ export class Effects {
           vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - 20 * u,
           drag: 2.2, life: rand(0.9, 1.3),
           delay: off + t * 0.12,
-          ch: i === steps ? '✦' : i % 2 ? '.' : '*',
-          font: i === steps ? 'serif' : 'mono',
-          size: (i === steps ? 20 : 12) * u,
+          ch: i === steps ? '*' : i % 2 ? '.' : '+',
           color: i === steps && Math.random() < 0.5 ? ACCENT : INK,
-          pop: 0.5,
         });
       }
       // a little pop at the fingertip
@@ -268,8 +252,7 @@ export class Effects {
           vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
           drag: 3.2, life: rand(0.6, 1),
           delay: off + 0.16,
-          ch: pick(['*', '+', '.', '✧']),
-          size: rand(9, 15) * u,
+          ch: pick(['*', '+', '.', 'x']),
           twinkle: 12,
         });
       }
@@ -278,10 +261,10 @@ export class Effects {
     trace(tipB, 0.04);
   }
 
-  // ─────────────────────────────── 06 heart hands → ascii hearts (medium)
+  // ─────────────────────────────── 06 heart hands → hearts (medium)
   hearts(x, y) {
     const u = this.unit;
-    // a heart outline drawn in characters, which then blooms outward
+    // a heart outline traced through the grid, which then blooms outward
     const pts = 34;
     for (let i = 0; i < pts; i++) {
       const t = (i / pts) * TAU;
@@ -294,11 +277,8 @@ export class Effects {
         vx: hx * 9 * u, vy: hy * 9 * u - 30 * u,
         drag: 1.6, life: 1.9,
         delay: (i / pts) * 0.25,
-        ch: i % 3 === 0 ? '♡' : i % 3 === 1 ? '.' : '+',
-        font: i % 3 === 0 ? 'serif' : 'mono',
+        ch: i % 3 === 0 ? '♥' : i % 3 === 1 ? '.' : '+',
         color: i % 3 === 0 ? ACCENT : INK,
-        size: (i % 3 === 0 ? 16 : 12) * u,
-        pop: 0.6,
       });
     }
 
@@ -312,18 +292,14 @@ export class Effects {
         delay: 0.2 + Math.random() * 0.9,
         life: rand(1.6, 2.6),
         ch,
-        font: ch === '<3' ? 'mono' : 'serif',
-        color: ch === '♥' || Math.random() < 0.3 ? ACCENT : INK,
-        size: (ch === '<3' ? rand(11, 15) : rand(14, 26)) * u,
+        color: ch === '♥' && Math.random() < 0.6 ? ACCENT : INK,
         sway: rand(14, 30) * u,
-        pop: 0.5,
       });
     }
 
     // a few orbit the subject once before drifting off
     const b = this.body;
     for (let i = 0; i < 12; i++) {
-      const ch = pick(['♡', '<3', '♥', '♡']);
       this.add({
         mode: 'orbit',
         cx: b.cx, cy: b.cy - b.ry * 0.2,
@@ -334,10 +310,8 @@ export class Effects {
         grow: 0.05,
         delay: 0.35 + i * 0.07,
         life: rand(2.6, 3.4),
-        ch,
-        font: ch === '<3' ? 'mono' : 'serif',
+        ch: '♥',
         color: i % 3 === 0 ? ACCENT : INK,
-        size: rand(13, 20) * u,
         drag: 1.2,
       });
     }
@@ -361,7 +335,7 @@ export class Effects {
         if (p.crackle) {
           for (let k = 0; k < 3; k++) {
             const a = Math.random() * TAU, sp = rand(30, 90) * this.unit;
-            born.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, drag: 3, life: rand(0.3, 0.6), ch: '.', size: p.size * 0.6, color: p.color, twinkle: 20 });
+            born.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, drag: 3, life: rand(0.3, 0.6), ch: '.', color: p.color, twinkle: 20 });
           }
         }
         continue;
@@ -419,9 +393,21 @@ export class Effects {
     for (const p of born) this.add(p);
   }
 
-  draw(ctx, paper) {
-    const dotInk = this.atlas.get('.', INK);
-    const knock = [];
+  // Write every live particle into the field's effect layer: the cell under
+  // it takes the particle's glyph, and the strongest particle wins the cell.
+  rasterize(field) {
+    const { cols, rows, cellW, cellH, fxA, fxG } = field;
+    fxA.fill(0);
+    const put = (x, y, g, a) => {
+      if (x < 0 || y < 0) return;
+      const c = (x / cellW) | 0, r = (y / cellH) | 0;
+      if (c >= cols || r >= rows) return;
+      const i = r * cols + c;
+      if (a > fxA[i]) {
+        fxA[i] = a;
+        fxG[i] = g;
+      }
+    };
     for (const p of this.ps) {
       if (p.delay > 0) continue;
       const t = p.age / p.life;
@@ -429,37 +415,30 @@ export class Effects {
       a *= Math.min(1, p.age / 0.08); // fade in
       if (t > 0.55) a *= 1 - (t - 0.55) / 0.45; // fade out
       if (p.twinkle) a *= 0.62 + 0.38 * Math.sin(p.age * p.twinkle + p.phase);
-      let s = p.size;
-      if (p.pop) {
-        const k = Math.min(1, p.age / 0.18);
-        s *= 1 + p.pop * (1 - k) * (1 - k) * 1.2 - (p.pop && t > 0.7 ? (t - 0.7) * 0.6 : 0);
+      if (a <= 0.03) continue;
+
+      if (p.r) {
+        // a patch of cells, strongest at the centre
+        const c0 = Math.floor((p.x - p.r) / cellW), c1 = Math.floor((p.x + p.r) / cellW);
+        const r0 = Math.floor((p.y - p.r) / cellH), r1 = Math.floor((p.y + p.r) / cellH);
+        for (let r = r0; r <= r1; r++) {
+          for (let c = c0; c <= c1; c++) {
+            const x = (c + 0.5) * cellW, y = (r + 0.5) * cellH;
+            const d = Math.hypot(x - p.x, y - p.y);
+            if (d < p.r) put(x, y, p.g, a * (1 - (d / p.r) * 0.6));
+          }
+        }
+      } else {
+        put(p.x, p.y, p.g, a);
       }
+
       if (p.trail && p.trail.length >= 4) {
         const tr = p.trail;
         for (let k = 0; k < tr.length - 2; k += 2) {
           const f = (k / 2 + 1) / (tr.length / 2);
-          stamp(ctx, dotInk, tr[k], tr[k + 1], s * 0.55 * f, a * 0.45 * f);
+          put(tr[k], tr[k + 1], p.tg, a * 0.45 * f);
         }
       }
-      if (a > 0.05 && p.ch !== '.' && p.ch !== '·') knock.push(p.x, p.y, s * 0.42, a * 0.85);
-      p.drawSize = s;
-      p.drawAlpha = a;
     }
-    // punch a small paper-coloured hole behind each particle so effects read
-    // clearly on top of the portrait, like type set over an image
-    if (paper) {
-      ctx.fillStyle = paper;
-      for (let k = 0; k < knock.length; k += 4) {
-        ctx.globalAlpha = knock[k + 3];
-        ctx.beginPath();
-        ctx.arc(knock[k], knock[k + 1], knock[k + 2], 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    for (const p of this.ps) {
-      if (p.delay > 0 || !p.drawAlpha) continue;
-      stamp(ctx, p.g, p.x, p.y, p.drawSize, p.drawAlpha);
-    }
-    ctx.globalAlpha = 1;
   }
 }

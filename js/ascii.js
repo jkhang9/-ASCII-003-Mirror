@@ -63,6 +63,9 @@ export class AsciiField {
     this.dy = new Float32Array(n);
     this.vx = new Float32Array(n);
     this.vy = new Float32Array(n);
+    // effect layer, written by Effects.rasterize: strength and glyph per cell
+    this.fxA = new Float32Array(n);
+    this.fxG = new Array(n).fill(null);
     this.sample.width = cols;
     this.sample.height = rows;
   }
@@ -296,22 +299,11 @@ export class AsciiField {
     }
   }
 
-  draw(ctx, atlas, style, time) {
-    const { cols, rows, cellW, cellH, ink, dx, dy, vx, vy } = this;
+  draw(ctx, style, time) {
+    const { cols, rows, cellW, cellH, ink, dx, dy, vx, vy, fxA, fxG } = this;
     const glyphs = style.glyphs;
     const ng = glyphs ? glyphs.length : 0;
-    const dot = style.dot;
     const tick = (time * 1.4) | 0;
-
-    // background: a sparse dotted field, like graph paper
-    const bgSize = cellH * 0.62;
-    for (let r = 1; r < rows; r += 2) {
-      for (let c = (r >> 1) % 2 ? 1 : 2; c < cols; c += 3) {
-        const i = r * cols + c;
-        if (ink[i] > 0.05) continue;
-        stamp(ctx, dot, (c + 0.5) * cellW + dx[i], (r + 0.5) * cellH + dy[i], bgSize, 0.11);
-      }
-    }
 
     const textMode = style.mode === 'text';
     const text = style.text;
@@ -323,15 +315,24 @@ export class AsciiField {
       for (let c = 0; c < cols; c++) {
         const i = r * cols + c;
         const v = ink[i];
-        if (v < 0.035) continue;
+        const f = fxA[i];
+        const inked = v >= 0.035;
+        // text mode walks the phrase over inked cells, even ones an effect takes over
+        const textG = textMode && inked ? style.textGlyphs[seq++ % tl] : null;
+        if (!inked && f < 0.035) continue;
         const breathe = Math.sin(time * 1.2 + c * 0.37 + r * 0.23) * 0.45;
         const x = (c + 0.5) * cellW + dx[i];
         const y = y0 + dy[i] + breathe;
         let g, size, alpha;
-        if (textMode) {
-          const ch = style.textGlyphs[seq++ % tl];
-          if (!ch) continue;
-          g = ch;
+        if (f >= 0.035 && f >= v * 0.5) {
+          // an effect owns this cell: its glyph replaces the portrait's
+          const s = f > v ? f : v;
+          g = fxG[i];
+          size = cellH * (0.8 + 0.32 * s);
+          alpha = 0.16 + s * 1.05;
+        } else if (textMode) {
+          if (!textG) continue;
+          g = textG;
           size = cellH * (0.74 + 0.34 * v);
           alpha = 0.14 + v * 1.1;
         } else {

@@ -7,8 +7,7 @@ const PAD = 1.5; // sprite box = BASE * PAD, glyph centred
 
 export const FONTS = {
   mono: '"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace',
-  serif: '"Instrument Serif", Georgia, serif',
-  // symbols like ✦ ♡ fall back to whatever the system has, which is fine
+  // symbols like ♥ fall back to whatever the system has, which is fine
 };
 
 export class GlyphAtlas {
