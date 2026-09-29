@@ -503,6 +503,8 @@ function syncControls() {
     if (el.type === 'checkbox') el.checked = !!v;
     else if (el.type === 'radio') el.checked = el.value === v;
     else if (el.value !== String(v)) el.value = v;
+    // sliders show how far along they are
+    if (el.type === 'range') el.style.setProperty('--fill', ((v - el.min) / (el.max - el.min)) * 100 + '%');
   }
   $('#customChip').classList.toggle('is-active', settings.charset === 'custom');
 }

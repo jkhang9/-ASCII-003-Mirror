@@ -15,7 +15,7 @@
 <body>
   <header class="bar">
     <h1 class="title">ASCII Camera</h1>
-    <span class="muted small">Runs in your browser. Nothing is recorded.</span>
+    <span class="meta">Runs in your browser. Nothing is recorded.</span>
   </header>
 
   <main class="playground">
@@ -27,52 +27,54 @@
         <div class="overlay" id="overlay" data-state="intro">
           <div class="overlay__card" data-for="intro">
             <h2 class="overlay__title">Your movement becomes text.</h2>
-            <button class="btn btn--ink" id="startBtn" type="button">Turn on the camera</button>
-            <button class="link small" data-action="demo" type="button">or play without a camera</button>
+            <div class="overlay__actions">
+              <button class="btn btn--primary" id="startBtn" type="button">Turn on the camera</button>
+              <button class="btn btn--ghost" data-action="demo" type="button">Play without a camera</button>
+            </div>
           </div>
 
           <div class="overlay__card" data-for="requesting">
             <h2 class="overlay__title">Waiting for camera permission</h2>
-            <p class="muted small">Look for the prompt near the address bar.</p>
+            <p class="meta">Look for the prompt near the address bar.</p>
           </div>
 
           <div class="overlay__card" data-for="denied">
             <h2 class="overlay__title">Camera access was blocked</h2>
-            <p class="muted small">Allow camera access for this page in your browser settings, then try again.</p>
+            <p class="meta">Allow camera access for this page in your browser settings, then try again.</p>
             <div class="overlay__actions">
-              <button class="btn btn--ink" data-action="retry" type="button">Try again</button>
+              <button class="btn btn--primary" data-action="retry" type="button">Try again</button>
               <button class="btn" data-action="demo" type="button">Play without it</button>
             </div>
           </div>
 
           <div class="overlay__card" data-for="unavailable">
             <h2 class="overlay__title">No camera found</h2>
-            <p class="muted small" id="unavailableDetail">Plug one in, or close other apps using it.</p>
+            <p class="meta" id="unavailableDetail">Plug one in, or close other apps using it.</p>
             <div class="overlay__actions">
-              <button class="btn btn--ink" data-action="retry" type="button">Try again</button>
+              <button class="btn btn--primary" data-action="retry" type="button">Try again</button>
               <button class="btn" data-action="demo" type="button">Play without it</button>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="statusbar mono small">
+      <div class="statusbar">
         <span class="status" id="status" data-state="idle" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="statusText">Standing by</span><span class="status__aux" id="statusAux"></span></span>
-        <span class="hint muted" id="hint" aria-live="polite"></span>
+        <span class="meta hint" id="hint" aria-live="polite"></span>
       </div>
 
       <section class="gesture-bar" aria-labelledby="gesturesLabel">
-        <div class="gesture-bar__head">
-          <h3 class="section__title" id="gesturesLabel">Gestures</h3>
-          <span class="muted small">Click or press 1–6 to preview</span>
+        <div class="section__head">
+          <h2 class="section__title" id="gesturesLabel">Gestures</h2>
+          <span class="meta">Click or press 1–6 to preview</span>
         </div>
         <ul class="gestures">
-          <li><button class="gesture" type="button" data-gesture="wave" data-try="wave">Wave <span class="muted">sparkles</span></button></li>
-          <li><button class="gesture" type="button" data-gesture="fireworks" data-try="fireworks">Fist → open <span class="muted">fireworks</span></button></li>
-          <li><button class="gesture" type="button" data-gesture="thumbsUp" data-try="thumbsUp">Thumbs up <span class="muted">spark</span></button></li>
-          <li><button class="gesture" type="button" data-gesture="doubleThumbs" data-try="doubleThumbs">Two thumbs <span class="muted">celebration</span></button></li>
-          <li><button class="gesture" type="button" data-gesture="peace" data-try="peace">Peace <span class="muted">star burst</span></button></li>
-          <li><button class="gesture" type="button" data-gesture="heart" data-try="heart">Heart hands <span class="muted">hearts</span></button></li>
+          <li><button class="btn gesture" type="button" data-gesture="wave" data-try="wave">Wave <span class="muted">sparkles</span></button></li>
+          <li><button class="btn gesture" type="button" data-gesture="fireworks" data-try="fireworks">Fist → open <span class="muted">fireworks</span></button></li>
+          <li><button class="btn gesture" type="button" data-gesture="thumbsUp" data-try="thumbsUp">Thumbs up <span class="muted">spark</span></button></li>
+          <li><button class="btn gesture" type="button" data-gesture="doubleThumbs" data-try="doubleThumbs">Two thumbs <span class="muted">celebration</span></button></li>
+          <li><button class="btn gesture" type="button" data-gesture="peace" data-try="peace">Peace <span class="muted">star burst</span></button></li>
+          <li><button class="btn gesture" type="button" data-gesture="heart" data-try="heart">Heart hands <span class="muted">hearts</span></button></li>
         </ul>
       </section>
     </section>
@@ -80,12 +82,12 @@
     <aside class="panel" aria-label="Customize">
       <div class="panel__head">
         <h2 class="panel__title">Customize</h2>
-        <button class="text-btn" id="resetBtn" type="button">Reset</button>
+        <button class="btn btn--ghost btn--compact" id="resetBtn" type="button">Reset</button>
       </div>
 
       <section class="section" aria-labelledby="charsetLabel">
         <h3 class="section__title" id="charsetLabel">Characters</h3>
-        <div class="segmented segmented--wrap" role="radiogroup" aria-labelledby="charsetLabel">
+        <div class="segmented segmented--grid" role="radiogroup" aria-labelledby="charsetLabel">
           <label title=".:-=+*#%@"><input type="radio" name="charset" value="classic" data-setting="charset"><span>Classic</span></label>
           <label title=".:;Il!i><~+?1tfjrx"><input type="radio" name="charset" value="detailed" data-setting="charset"><span>Detailed</span></label>
           <label title="░▒▓█"><input type="radio" name="charset" value="blocks" data-setting="charset"><span>Blocks</span></label>
@@ -96,32 +98,12 @@
             <input class="chip-input__field" type="text" data-setting="custom" maxlength="48" placeholder="Type your own…" aria-label="Custom characters or words" autocomplete="off" spellcheck="false">
           </label>
         </div>
-      <div class="prop prop--slider">
-        <label for="density">Density</label>
-        <input class="range" type="range" id="density" data-setting="density" min="0" max="1" step="0.01">
-      </div>
-      </section>
-
-      <section class="section" aria-labelledby="adjustLabel">
-        <h3 class="section__title" id="adjustLabel">Adjust</h3>
-      <div class="prop prop--slider">
-        <label for="brightness">Brightness</label>
-        <input class="range" type="range" id="brightness" data-setting="brightness" min="-100" max="100" step="1">
-      </div>
-      <div class="prop prop--slider">
-        <label for="contrast">Contrast</label>
-        <input class="range" type="range" id="contrast" data-setting="contrast" min="0.2" max="3" step="0.1">
-      </div>
-      <div class="prop prop--slider">
-        <label for="blur">Blur</label>
-        <input class="range" type="range" id="blur" data-setting="blur" min="0" max="4" step="1">
-      </div>
-        <label class="check"><input type="checkbox" data-setting="invert"><span class="check__box" aria-hidden="true"></span>Invert</label>
-      </section>
-
-      <section class="section" aria-labelledby="edgesLabel">
-        <div class="prop">
-          <h3 class="section__title" id="edgesLabel">Edges</h3>
+        <div class="row">
+          <label class="row__label" for="density">Density</label>
+          <input class="range" type="range" id="density" data-setting="density" min="0" max="1" step="0.01">
+        </div>
+        <div class="row">
+          <span class="row__label" id="edgesLabel">Edges</span>
           <div class="segmented" role="radiogroup" aria-labelledby="edgesLabel">
             <label><input type="radio" name="edges" value="none" data-setting="edges"><span>None</span></label>
             <label title="Draws | / - \ along edges"><input type="radio" name="edges" value="sobel" data-setting="edges"><span>Sobel</span></label>
@@ -130,22 +112,48 @@
         </div>
       </section>
 
+      <section class="section" aria-labelledby="adjustLabel">
+        <h3 class="section__title" id="adjustLabel">Adjust</h3>
+        <div class="row">
+          <label class="row__label" for="brightness">Brightness</label>
+          <input class="range" type="range" id="brightness" data-setting="brightness" min="-100" max="100" step="1">
+        </div>
+        <div class="row">
+          <label class="row__label" for="contrast">Contrast</label>
+          <input class="range" type="range" id="contrast" data-setting="contrast" min="0.2" max="3" step="0.1">
+        </div>
+        <div class="row">
+          <label class="row__label" for="blur">Blur</label>
+          <input class="range" type="range" id="blur" data-setting="blur" min="0" max="4" step="1">
+        </div>
+        <label class="row">
+          <span class="row__label">Invert</span>
+          <input class="switch" type="checkbox" role="switch" data-setting="invert">
+        </label>
+      </section>
+
       <section class="section" aria-labelledby="viewLabel">
         <h3 class="section__title" id="viewLabel">View</h3>
-        <div class="prop">
-          <span id="themeLabel">Canvas</span>
+        <div class="row">
+          <span class="row__label" id="themeLabel">Canvas</span>
           <div class="segmented" role="radiogroup" aria-labelledby="themeLabel">
             <label><input type="radio" name="theme" value="light" data-setting="theme"><span>Light</span></label>
             <label><input type="radio" name="theme" value="dark" data-setting="theme"><span>Dark</span></label>
           </div>
         </div>
-        <label class="check"><input type="checkbox" data-setting="mirror"><span class="check__box" aria-hidden="true"></span>Mirror</label>
-        <label class="check"><input type="checkbox" data-setting="removeBg"><span class="check__box" aria-hidden="true"></span>Remove background</label>
+        <label class="row">
+          <span class="row__label">Mirror</span>
+          <input class="switch" type="checkbox" role="switch" data-setting="mirror">
+        </label>
+        <label class="row">
+          <span class="row__label">Remove background</span>
+          <input class="switch" type="checkbox" role="switch" data-setting="removeBg">
+        </label>
       </section>
 
       <div class="actions">
         <button class="btn" id="copyBtn" type="button">Copy text</button>
-        <button class="btn btn--ink" id="snapBtn" type="button">Save PNG</button>
+        <button class="btn btn--primary" id="snapBtn" type="button">Save PNG</button>
       </div>
     </aside>
   </main>
