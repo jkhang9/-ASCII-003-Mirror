@@ -53,7 +53,6 @@ const DEFAULTS = {
   custom: '',
   density: 0.55,
   edges: 'none',
-  effects: ALL_ON,
   removeBg: false,
   mirror: true,
   theme: 'light',
@@ -62,9 +61,12 @@ const DEFAULTS = {
 function loadSettings() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE) || 'null');
-    if (raw && typeof raw === 'object') return { ...DEFAULTS, ...raw, effects: { ...ALL_ON, ...(raw.effects || {}) } };
+    if (raw && typeof raw === 'object') {
+      const { effects, sensitivity, ...rest } = raw; // retired settings
+      return { ...DEFAULTS, ...rest };
+    }
   } catch {}
-  return { ...DEFAULTS, effects: { ...ALL_ON } };
+  return { ...DEFAULTS };
 }
 function saveSettings() {
   try {
@@ -136,8 +138,6 @@ function buildStyle() {
   if (settings.charset === 'blocks') style.scale = 1.01 / atlas.extent('█');
 }
 
-const anyGesture = () => GESTURES.some((g) => settings.effects[g]);
-
 // effect glyphs always use the canvas ink, so they stay black and white
 const glyphFor = (ch) => atlas.get(ch, theme().ink);
 
@@ -208,7 +208,7 @@ async function startCamera() {
     return;
   }
   // warm the models up while the permission prompt is open
-  if (settings.removeBg || anyGesture()) startVision();
+  startVision();
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
@@ -220,7 +220,7 @@ async function startCamera() {
     effects.clear();
     setOverlay('none');
     updateStatus();
-    if (anyGesture()) showHint(state.visionState === 'ready' ? 'Try a gesture: wave, fist → open, thumbs up, peace, heart hands' : 'Loading hand tracking…', 5000);
+    showHint(state.visionState === 'ready' ? 'Try a gesture: wave, fist → open, thumbs up, peace, heart hands' : 'Loading hand tracking…', 5000);
   } catch (err) {
     console.warn('[ascii-camera] camera error', err);
     const name = err && err.name;
@@ -245,7 +245,7 @@ function startVision() {
       state.vision = v;
       state.visionState = 'ready';
       updateStatus();
-      if (state.mode === 'camera' && anyGesture()) showHint(v.hands ? 'Try a gesture: wave, fist → open, thumbs up, peace, heart hands' : 'Hand tracking didn’t load', 5000);
+      if (state.mode === 'camera') showHint(v.hands ? 'Try a gesture: wave, fist → open, thumbs up, peace, heart hands' : 'Hand tracking didn’t load', 5000);
     })
     .catch((err) => {
       console.warn('[ascii-camera] motion models failed to load', err);
@@ -405,11 +405,11 @@ function updateStatus() {
     s = 'active';
     text = 'Live';
   }
-  if (state.mode === 'camera' && (settings.removeBg || anyGesture())) {
+  if (state.mode === 'camera') {
     if (state.visionState === 'loading') aux = '· loading hand tracking';
     else if (state.visionState === 'failed') aux = '· tracking unavailable';
-    else if (anyGesture() && state.vision && !state.vision.hands) aux = '· gestures unavailable';
-    else if (anyGesture() && state.hands.length) aux = `· ${state.hands.length} hand${state.hands.length > 1 ? 's' : ''}`;
+    else if (state.vision && !state.vision.hands) aux = '· gestures unavailable';
+    else if (state.hands.length) aux = `· ${state.hands.length} hand${state.hands.length > 1 ? 's' : ''}`;
   }
   statusEl.dataset.state = s;
   statusText.textContent = text;
@@ -445,7 +445,7 @@ function frame(now) {
         const t0 = performance.now();
         if (settings.removeBg && state.frameNo % state.segEvery === 0) runSegmenter();
         const had = state.hands.length;
-        state.hands = anyGesture() ? runHands() : [];
+        state.hands = runHands();
         if (had !== state.hands.length) updateStatus();
         // if the machine struggles, segment every other frame
         const cost = performance.now() - t0;
@@ -460,7 +460,7 @@ function frame(now) {
 
   // gestures
   if (state.mode === 'camera' && fresh && state.visionState === 'ready') {
-    const out = engine.update(state.hands, now, GESTURE_SENSITIVITY, settings.effects);
+    const out = engine.update(state.hands, now, GESTURE_SENSITIVITY, ALL_ON);
     state.waving = out.waving;
     state.moving = out.moving;
     for (const ev of out.events) playEffect(ev);
@@ -505,10 +505,6 @@ function syncControls() {
     else if (el.value !== String(v)) el.value = v;
   }
   $('#customChip').classList.toggle('is-active', settings.charset === 'custom');
-  document.querySelectorAll('[data-effect]').forEach((el) => {
-    el.checked = !!settings.effects[el.dataset.effect];
-    el.closest('.gesture').classList.toggle('is-off', !el.checked);
-  });
 }
 
 // typing in the custom chip selects it; clearing it goes back to the last preset
@@ -545,16 +541,6 @@ for (const el of controls) {
   });
 }
 
-document.querySelectorAll('[data-effect]').forEach((el) => {
-  el.addEventListener('change', () => {
-    settings.effects = { ...settings.effects, [el.dataset.effect]: el.checked };
-    if (el.checked && state.mode === 'camera') startVision();
-    syncControls();
-    updateStatus();
-    saveSettings();
-  });
-});
-
 document.querySelectorAll('[data-try]').forEach((btn) => {
   btn.addEventListener('click', () => {
     preview(btn.dataset.try);
@@ -571,7 +557,7 @@ $('#customChip input').addEventListener('focus', () => {
 });
 
 $('#resetBtn').addEventListener('click', () => {
-  Object.assign(settings, DEFAULTS, { effects: { ...ALL_ON } });
+  Object.assign(settings, DEFAULTS);
   field.resize(state.W, state.H, settings.density);
   buildStyle();
   syncControls();
@@ -618,7 +604,7 @@ overlay.addEventListener('click', (e) => {
     state.mode = 'demo';
     setOverlay('none');
     updateStatus();
-    showHint('Press Try, or keys 1–6, to preview the gestures', 5000);
+    showHint('Click a gesture, or press 1–6, to preview it', 5000);
   }
 });
 

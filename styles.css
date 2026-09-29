@@ -292,39 +292,35 @@ body {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 6px;
-}
-.gesture {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
   gap: 6px;
-  padding: 8px 8px 8px 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* room for the card outlines and focus ring inside the scroller */
+  padding: 3px;
+  margin: -3px;
+}
+.gestures::-webkit-scrollbar { display: none; }
+.gestures li { flex: 1 0 auto; }
+.gesture {
+  appearance: none;
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
   border-radius: 6px;
   background: var(--surface);
   box-shadow: 0 0 0 1px var(--rule);
-  transition: background 0.3s;
-}
-.gesture .check { align-items: flex-start; }
-.gesture .check__box { margin-top: 2px; }
-.gesture__text { display: grid; gap: 1px; line-height: 1.3; }
-.gesture.is-hit { background: #e4e4e4; }
-.gesture.is-off .gesture__text > span:first-child { color: var(--muted); }
-.try {
-  appearance: none;
-  border: 0;
-  background: none;
-  padding: 2px 4px;
   font: inherit;
-  font-size: 12.5px;
-  color: var(--muted);
+  font-size: 13.5px;
+  color: var(--ink);
+  white-space: nowrap;
   cursor: pointer;
-  border-radius: 3px;
+  transition: background 0.3s, box-shadow 0.15s;
 }
-.try:hover { color: var(--ink); }
-.try:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.gesture:hover { box-shadow: 0 0 0 1px var(--ink); }
+.gesture:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.gesture.is-hit { background: #e4e4e4; }
 .range:disabled { opacity: 0.4; cursor: default; }
 
 
@@ -423,14 +419,10 @@ body {
 
 /* ───────────────────────── responsive */
 
-@media (max-width: 1180px) {
-  .gestures { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
 
 @media (max-width: 900px) {
   .playground { grid-template-columns: minmax(0, 1fr); }
   .panel { position: static; max-height: none; overflow: visible; padding: 0; margin: 0; }
   .stage { height: clamp(340px, 66vh, 760px); }
   .gesture-bar__head { flex-wrap: wrap; }
-  .gestures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

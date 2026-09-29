@@ -37,7 +37,7 @@ The panel is one column, ordered like a design tool's inspector: the controls yo
 | 5 | Peace | stars trace the V of your fingers, then burst at the fingertips |
 | 6 | Heart hands | a beating heart-shaped window that inverts the portrait, plus smaller hearts |
 
-The gestures sit in a strip under the mirror: each can be switched on or off, and its **Try** button (or number key) previews the effect without a camera.
+The gestures sit in a single row under the mirror. Clicking one (or pressing its number key) previews the effect without a camera.
 
 ## How it works
 
