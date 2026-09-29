@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASCII Camera</title>
+  <meta name="description" content="Your movement becomes text. A playful camera playground where hand gestures set off typographic effects.">
+  <meta name="theme-color" content="#f2ede3">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23f2ede3'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' font-family='serif' fill='%231b1915'%3E%E2%9C%A6%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="masthead">
+    <div class="masthead__meta mono">
+      <span>No. 001</span>
+      <span class="rule-dash" aria-hidden="true"></span>
+      <span>a camera playground</span>
+      <span class="spacer"></span>
+      <span class="muted">runs entirely in your browser</span>
+    </div>
+    <div class="masthead__row">
+      <h1 class="title">ASCII <em>Camera</em><sup class="title__star" aria-hidden="true">✦</sup></h1>
+      <div class="masthead__copy">
+        <p class="tagline">motion makes magic.</p>
+        <p class="mono small">Wave. Pose. Make some noise.</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="playground">
+    <section class="stage" id="stage" aria-label="Live ASCII camera">
+      <canvas id="ascii" class="stage__canvas" aria-label="Your camera image, drawn in text characters" role="img"></canvas>
+      <video id="video" class="stage__video" playsinline muted aria-hidden="true"></video>
+
+      <span class="crop crop--tl" aria-hidden="true"></span>
+      <span class="crop crop--tr" aria-hidden="true"></span>
+      <span class="crop crop--bl" aria-hidden="true"></span>
+      <span class="crop crop--br" aria-hidden="true"></span>
+
+      <div class="stage__status mono" id="status" data-state="idle" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span><span id="statusText">MOTION SENSOR STANDING BY</span><span class="status__aux" id="statusAux"></span>
+      </div>
+      <div class="stage__fig mono muted" aria-hidden="true">fig. 01 — live</div>
+      <div class="stage__caption" aria-hidden="true"><em>you, in text.</em></div>
+      <div class="stage__dims mono muted" id="dims" aria-hidden="true"></div>
+
+      <div class="toast" id="toast" aria-live="polite"></div>
+      <div class="stage__hint mono" id="hint" aria-live="polite"></div>
+
+      <div class="overlay" id="overlay" data-state="intro">
+        <div class="overlay__card" data-for="intro">
+          <p class="mono small muted">plate i.</p>
+          <h2 class="overlay__title">Your movement<br><em>becomes text.</em></h2>
+          <button class="btn btn--ink" id="startBtn" type="button">turn on the camera <span aria-hidden="true">✦</span></button>
+          <p class="mono small muted">Nothing is recorded or uploaded.</p>
+          <button class="link mono small" data-action="demo" type="button">or play without a camera →</button>
+        </div>
+
+        <div class="overlay__card" data-for="requesting">
+          <p class="spinner mono" aria-hidden="true"></p>
+          <h2 class="overlay__title"><em>May I see you?</em></h2>
+          <p class="mono small muted">Look for the permission prompt near the address bar.</p>
+        </div>
+
+        <div class="overlay__card" data-for="denied">
+          <p class="mono small muted">x_x</p>
+          <h2 class="overlay__title">The camera<br><em>said no.</em></h2>
+          <p class="mono small muted">Allow camera access for this page in your browser settings, then try again.</p>
+          <div class="overlay__actions">
+            <button class="btn btn--ink" data-action="retry" type="button">try again</button>
+            <button class="btn" data-action="demo" type="button">play without it</button>
+          </div>
+        </div>
+
+        <div class="overlay__card" data-for="unavailable">
+          <p class="mono small muted">o_o ?</p>
+          <h2 class="overlay__title">No camera<br><em>in sight.</em></h2>
+          <p class="mono small muted" id="unavailableDetail">Plug one in, or close other apps using it.</p>
+          <div class="overlay__actions">
+            <button class="btn btn--ink" data-action="retry" type="button">try again</button>
+            <button class="btn" data-action="demo" type="button">play without it</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="Customizer">
+      <div class="panel__head">
+        <span class="mono">Customizer</span>
+        <span class="mono muted">— tune it</span>
+      </div>
+
+      <div class="field">
+        <div class="field__label mono" id="charsetLabel">Characters</div>
+        <div class="chips" role="radiogroup" aria-labelledby="charsetLabel">
+          <button class="chip" type="button" role="radio" data-set="dot" aria-label="dots">.</button>
+          <button class="chip" type="button" role="radio" data-set="plus" aria-label="plus signs">+</button>
+          <button class="chip" type="button" role="radio" data-set="x" aria-label="x marks">x</button>
+          <button class="chip" type="button" role="radio" data-set="o" aria-label="circles">o</button>
+          <button class="chip" type="button" role="radio" data-set="hash" aria-label="hashes">#</button>
+          <button class="chip" type="button" role="radio" data-set="at" aria-label="at signs">@</button>
+          <button class="chip chip--wide" type="button" role="radio" data-set="mixed" aria-label="mixed">. + * o , :</button>
+        </div>
+        <label class="custom">
+          <span class="mono small muted">or type your own</span>
+          <input id="customText" class="custom__input" type="text" maxlength="48" placeholder="hello, you" autocomplete="off" spellcheck="false">
+        </label>
+      </div>
+
+      <div class="field">
+        <label class="field__label mono" for="density">ASCII density</label>
+        <input class="range" type="range" id="density" min="0" max="1" step="0.01" value="0.55">
+        <div class="range__ends mono small muted"><span>coarse</span><span>detailed</span></div>
+      </div>
+
+      <div class="field">
+        <label class="field__label mono" for="sensitivity">Motion sensitivity</label>
+        <input class="range" type="range" id="sensitivity" min="0" max="1" step="0.01" value="0.5">
+        <div class="range__ends mono small muted"><span>calm</span><span>twitchy</span></div>
+      </div>
+
+      <fieldset class="field field--effects">
+        <legend class="field__label mono">Effects</legend>
+        <label class="toggle"><input type="checkbox" data-effect="wave" checked><span class="toggle__box" aria-hidden="true"></span><span class="toggle__text">wave <span class="muted">→ sparkles</span></span></label>
+        <label class="toggle"><input type="checkbox" data-effect="fireworks" checked><span class="toggle__box" aria-hidden="true"></span><span class="toggle__text">fist → open <span class="muted">→ fireworks</span></span></label>
+        <label class="toggle"><input type="checkbox" data-effect="thumbsUp" checked><span class="toggle__box" aria-hidden="true"></span><span class="toggle__text">thumbs up <span class="muted">→ spark</span></span></label>
+        <label class="toggle"><input type="checkbox" data-effect="doubleThumbs" checked><span class="toggle__box" aria-hidden="true"></span><span class="toggle__text">two thumbs <span class="muted">→ celebration</span></span></label>
+        <label class="toggle"><input type="checkbox" data-effect="peace" checked><span class="toggle__box" aria-hidden="true"></span><span class="toggle__text">peace <span class="muted">→ star burst</span></span></label>
+        <label class="toggle"><input type="checkbox" data-effect="heart" checked><span class="toggle__box" aria-hidden="true"></span><span class="toggle__text">heart hands <span class="muted">→ hearts</span></span></label>
+      </fieldset>
+
+      <div class="panel__foot">
+        <button class="btn btn--small" id="snapBtn" type="button">save a frame ↓</button>
+        <p class="mono small muted">keys 1–6 preview effects</p>
+      </div>
+    </aside>
+  </main>
+
+  <section class="gestures" aria-labelledby="gesturesTitle">
+    <div class="gestures__head">
+      <h2 class="mono gestures__title" id="gesturesTitle">Try a gesture</h2>
+      <p class="gestures__sub"><em>six small spells.</em> <span class="mono small muted">tap a card to preview</span></p>
+    </div>
+
+    <ol class="cards">
+      <li><button class="card" type="button" data-gesture="wave">
+        <span class="card__top mono"><span>01</span><span class="card__level" title="ambient">●<span class="muted">○○○○</span></span></span>
+<pre class="card__art" aria-hidden="true">
+ ((  _ _ _   ))
+    | | | |
+    | | | |_
+    |      |
+     \    /
+      |  |
+</pre>
+        <span class="card__name">Wave</span>
+        <span class="card__fx mono">→ Star sparkles</span>
+        <span class="card__stamp mono" aria-hidden="true">✓ got it</span>
+        <span class="card__cool" aria-hidden="true"></span>
+      </button></li>
+
+      <li><button class="card" type="button" data-gesture="fireworks">
+        <span class="card__top mono"><span>02</span><span class="card__level" title="biggest">●●●●●</span></span>
+<pre class="card__art" aria-hidden="true">
+   .----.
+  (_|_|_|)   \ | /
+  (____ | → - * -
+     |  |    / | \
+</pre>
+        <span class="card__name">Fist → Open</span>
+        <span class="card__fx mono">→ ASCII fireworks</span>
+        <span class="card__stamp mono" aria-hidden="true">✓ got it</span>
+        <span class="card__cool" aria-hidden="true"></span>
+      </button></li>
+
+      <li><button class="card" type="button" data-gesture="thumbsUp">
+        <span class="card__top mono"><span>03</span><span class="card__level" title="small">●●<span class="muted">○○○</span></span></span>
+<pre class="card__art" aria-hidden="true">
+      _
+     ( )
+    _| |__
+   (___   |
+   (___   |
+    (____/
+</pre>
+        <span class="card__name">Thumbs Up</span>
+        <span class="card__fx mono">→ Spark</span>
+        <span class="card__stamp mono" aria-hidden="true">✓ got it</span>
+        <span class="card__cool" aria-hidden="true"></span>
+      </button></li>
+
+      <li><button class="card" type="button" data-gesture="doubleThumbs">
+        <span class="card__top mono"><span>04</span><span class="card__level" title="large">●●●●<span class="muted">○</span></span></span>
+<pre class="card__art" aria-hidden="true">
+   _         _
+  ( )       ( )
+ _| |_     _| |_
+(__   |   |   __)
+(__   |   |   __)
+ (___/     \___)
+</pre>
+        <span class="card__name">Two Thumbs Up</span>
+        <span class="card__fx mono">→ Celebration</span>
+        <span class="card__stamp mono" aria-hidden="true">✓ got it</span>
+        <span class="card__cool" aria-hidden="true"></span>
+      </button></li>
+
+      <li><button class="card" type="button" data-gesture="peace">
+        <span class="card__top mono"><span>05</span><span class="card__level" title="small">●●<span class="muted">○○○</span></span></span>
+<pre class="card__art" aria-hidden="true">
+  \ \   / /
+   \ \ / /
+   _\ V /_
+  (__    |
+  (__    |
+   (____/
+</pre>
+        <span class="card__name">Peace</span>
+        <span class="card__fx mono">→ Star burst</span>
+        <span class="card__stamp mono" aria-hidden="true">✓ got it</span>
+        <span class="card__cool" aria-hidden="true"></span>
+      </button></li>
+
+      <li><button class="card" type="button" data-gesture="heart">
+        <span class="card__top mono"><span>06</span><span class="card__level" title="medium">●●●<span class="muted">○○</span></span></span>
+<pre class="card__art" aria-hidden="true">
+  .-.     .-.
+ /   \   /   \
+ \    `v'    /
+  \    ♡    /
+   `.     .'
+     `._.'
+</pre>
+        <span class="card__name">Heart Hands</span>
+        <span class="card__fx mono">→ ASCII hearts</span>
+        <span class="card__stamp mono" aria-hidden="true">✓ got it</span>
+        <span class="card__cool" aria-hidden="true"></span>
+      </button></li>
+    </ol>
+  </section>
+
+  <footer class="colophon mono small muted">
+    <span>ASCII Camera</span>
+    <span>set in Instrument Serif &amp; IBM Plex Mono</span>
+    <span>hands by MediaPipe · all local, nothing saved</span>
+    <span>* + . x o # ✦</span>
+  </footer>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
