@@ -1,4 +1,4 @@
-import { INVERT } from './ascii.js';
+import { INVERT } from './ascii.js?v=20260929034603';
 
 // Character particles that live inside the portrait's grid. Each particle
 // moves with a little physics, but it is never painted on top of the mirror:

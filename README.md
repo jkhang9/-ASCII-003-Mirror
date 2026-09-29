@@ -48,4 +48,6 @@ The gestures sit in a single row under the mirror. Clicking one (or pressing its
 - **`js/palette.js`** holds the canvas colours for the light and dark canvas, matched to `styles.css`.
 - **`js/glyphs.js`** pre-renders each glyph once and stamps it with `drawImage`, which keeps a frame with 10k+ glyphs cheap.
 
+After changing any CSS or JS, run `sh tools/bump-version.sh`. It stamps a new `?v=` on the stylesheet, the entry script and every module import, so browsers don't keep serving stale cached files alongside new markup.
+
 Add `?debug` to the URL to expose the internals as `window.asciiCamera`.

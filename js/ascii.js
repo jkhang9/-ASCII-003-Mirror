@@ -7,7 +7,7 @@
 // write into a per-cell layer (fxA/fxG/fxK) that the draw pass honours, so
 // they are part of the grid rather than painted on top.
 
-import { stamp } from './glyphs.js';
+import { stamp } from './glyphs.js?v=20260929034603';
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lerp = (a, b, t) => a + (b - a) * t;

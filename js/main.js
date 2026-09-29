@@ -1,10 +1,10 @@
-import { GlyphAtlas } from './glyphs.js';
-import { AsciiField } from './ascii.js';
-import { Effects } from './effects.js';
-import { classifyHand, GestureEngine, COOLDOWN } from './gestures.js';
-import { loadVision } from './vision.js';
-import { DemoSitter } from './demo.js';
-import { THEMES } from './palette.js';
+import { GlyphAtlas } from './glyphs.js?v=20260929034603';
+import { AsciiField } from './ascii.js?v=20260929034603';
+import { Effects } from './effects.js?v=20260929034603';
+import { classifyHand, GestureEngine, COOLDOWN } from './gestures.js?v=20260929034603';
+import { loadVision } from './vision.js?v=20260929034603';
+import { DemoSitter } from './demo.js?v=20260929034603';
+import { THEMES } from './palette.js?v=20260929034603';
 
 const $ = (s) => document.querySelector(s);
 
