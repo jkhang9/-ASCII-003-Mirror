@@ -6,7 +6,7 @@ const BASE = 64; // px the sprite is rendered at
 const PAD = 1.5; // sprite box = BASE * PAD, glyph centred
 
 export const FONTS = {
-  mono: '"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace',
+  mono: '"Geist Mono", ui-monospace, Menlo, Consolas, monospace',
   // symbols like ♥ fall back to whatever the system has, which is fine
 };
 

@@ -624,7 +624,7 @@ async function boot() {
 
   // re-rasterise glyphs once the web font arrives
   try {
-    await Promise.race([document.fonts.load('64px "IBM Plex Mono"'), new Promise((r) => setTimeout(r, 2500))]);
+    await Promise.race([document.fonts.load('64px "Geist Mono"'), new Promise((r) => setTimeout(r, 2500))]);
   } catch {}
   atlas.clear();
   buildStyle();

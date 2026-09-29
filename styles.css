@@ -11,8 +11,8 @@
   --pressed: rgba(0, 0, 0, 0.1);
 
   /* type */
-  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --text-sm: 12px; /* meta, hints, section titles */
   --text-md: 13px; /* controls, labels */
   --text-lg: 15px; /* titles */
