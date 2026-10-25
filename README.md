@@ -1,6 +1,6 @@
 # ASCII Camera
 
-A live mirror drawn in text characters, in black and white. A customizer tunes the image, and a few hand gestures set off effects inside the same character grid: they swap, invert or clear cells instead of being painted on top. It's a static page with no build step, and everything runs locally in the browser. No video leaves the machine.
+A live mirror drawn in text characters, in black and white. A customizer tunes the image, and a few hand gestures set off effects inside the same character grid: they swap, invert or clear cells instead of being painted on top. It's a static page with no build step, and everything runs locally in the browser.
 
 ## Run it
 
